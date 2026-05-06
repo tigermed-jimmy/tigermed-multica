@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/multica-ai/multica/server/internal/daemon/repocache"
 )
 
 func TestHealthHandlerReportsCLIVersionAndActiveTaskCount(t *testing.T) {
@@ -127,6 +130,84 @@ func TestShutdownHandlerRejectsNonPost(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	if cancelled {
 		t.Fatal("GET request should not trigger cancellation")
+	}
+}
+
+func TestHealthHandlerRespondsWhileTaskRepoLookupWaitsOnGit(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen slow git remote: %v", err)
+	}
+	defer ln.Close()
+	accepted := make(chan struct{})
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		close(accepted)
+		time.Sleep(2 * time.Second)
+		_ = conn.Close()
+	}()
+
+	const workspaceID = "ws-health"
+	repoURL := "http://" + ln.Addr().String() + "/org/repo.git"
+	d := &Daemon{
+		cfg: Config{CLIVersion: "v1.0.0"},
+		workspaces: map[string]*workspaceState{
+			workspaceID: {
+				workspaceID:     workspaceID,
+				runtimeIDs:      []string{"rt-1"},
+				allowedRepoURLs: map[string]struct{}{repoURL: {}},
+				taskRepoURLs:    map[string]struct{}{},
+			},
+		},
+		repoCache: repocache.New(t.TempDir(), slog.Default()),
+		logger:    slog.Default(),
+	}
+
+	syncDone := make(chan struct{})
+	go func() {
+		_ = d.repoCache.Sync(workspaceID, []repocache.RepoInfo{{URL: repoURL}})
+		close(syncDone)
+	}()
+	select {
+	case <-accepted:
+	case <-time.After(time.Second):
+		t.Fatal("git clone did not connect to slow remote")
+	}
+
+	registerDone := make(chan struct{})
+	go func() {
+		d.registerTaskRepos(workspaceID, []RepoData{{URL: repoURL}})
+		close(registerDone)
+	}()
+
+	rec := httptest.NewRecorder()
+	healthDone := make(chan struct{})
+	go func() {
+		d.healthHandler(time.Now()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
+		close(healthDone)
+	}()
+
+	select {
+	case <-healthDone:
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", rec.Code)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("/health blocked behind task repo cache lookup")
+	}
+
+	select {
+	case <-registerDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("registerTaskRepos did not unblock after git finished")
+	}
+	select {
+	case <-syncDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("repo sync did not finish")
 	}
 }
 

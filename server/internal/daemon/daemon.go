@@ -458,6 +458,11 @@ func (d *Daemon) registerTaskRepos(workspaceID string, repos []RepoData) {
 		return
 	}
 
+	type repoCandidate struct {
+		url     string
+		tracked bool
+	}
+
 	d.mu.Lock()
 	ws, ok := d.workspaces[workspaceID]
 	if !ok {
@@ -467,7 +472,7 @@ func (d *Daemon) registerTaskRepos(workspaceID string, repos []RepoData) {
 	if ws.taskRepoURLs == nil {
 		ws.taskRepoURLs = make(map[string]struct{}, len(repos))
 	}
-	toSync := make([]RepoData, 0, len(repos))
+	candidates := make([]repoCandidate, 0, len(repos))
 	for _, repo := range repos {
 		url := strings.TrimSpace(repo.URL)
 		if url == "" {
@@ -477,14 +482,21 @@ func (d *Daemon) registerTaskRepos(workspaceID string, repos []RepoData) {
 		// AND the cache already has it.
 		_, inWorkspace := ws.allowedRepoURLs[url]
 		_, inTask := ws.taskRepoURLs[url]
-		if (inWorkspace || inTask) && d.repoCache != nil && d.repoCache.Lookup(workspaceID, url) != "" {
-			ws.taskRepoURLs[url] = struct{}{}
-			continue
-		}
 		ws.taskRepoURLs[url] = struct{}{}
-		toSync = append(toSync, RepoData{URL: url})
+		candidates = append(candidates, repoCandidate{
+			url:     url,
+			tracked: inWorkspace || inTask,
+		})
 	}
 	d.mu.Unlock()
+
+	toSync := make([]RepoData, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.tracked && d.repoCache != nil && d.repoCache.Lookup(workspaceID, candidate.url) != "" {
+			continue
+		}
+		toSync = append(toSync, RepoData{URL: candidate.url})
+	}
 
 	if d.repoCache != nil && len(toSync) > 0 {
 		// Sync in the background — same shape used at workspace registration.
