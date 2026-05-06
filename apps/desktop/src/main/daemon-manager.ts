@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, shell } from "electron";
+import { app, ipcMain, BrowserWindow, shell, dialog } from "electron";
 import { execFile } from "child_process";
 import {
   readFile,
@@ -142,6 +142,7 @@ interface HealthPayload {
   active_task_count?: number;
   agents?: string[];
   workspaces?: unknown[];
+  workspaces_root?: string;
 }
 
 async function fetchHealthAtPort(
@@ -278,6 +279,7 @@ async function fetchHealth(): Promise<DaemonStatus> {
       : 0,
     profile: active.name,
     serverUrl: data.server_url,
+    workspacesRoot: data.workspaces_root,
   };
 }
 
@@ -884,12 +886,34 @@ export function setupDaemonManager(
   ipcMain.handle("daemon:get-prefs", () => loadPrefs());
   ipcMain.handle(
     "daemon:set-prefs",
-    (_event, prefs: Partial<DaemonPrefs>) =>
-      loadPrefs().then((cur) => {
-        const merged = { ...cur, ...prefs };
-        return savePrefs(merged).then(() => merged);
-      }),
+    async (_event, prefs: Partial<DaemonPrefs>) => {
+      const cur = await loadPrefs();
+      const merged = { ...cur, ...prefs };
+
+      // If workspacesRoot changed, write it to the CLI profile config so
+      // the daemon picks it up on next start.
+      if (prefs.workspacesRoot !== undefined && prefs.workspacesRoot !== cur.workspacesRoot) {
+        const active = await ensureActiveProfile();
+        const cfg = await readProfileConfig(active.name);
+        cfg.workspaces_root = prefs.workspacesRoot || "";
+        await writeProfileConfig(active.name, cfg);
+      }
+
+      await savePrefs(merged);
+      return merged;
+    },
   );
+  ipcMain.handle("daemon:pick-directory", async () => {
+    const win = getMainWindow();
+    if (!win) return { canceled: true as const };
+    const result = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true as const };
+    }
+    return { canceled: false as const, path: result.filePaths[0] };
+  });
   ipcMain.handle("daemon:auto-start", async () => {
     const prefs = await loadPrefs();
     if (!prefs.autoStart) return;

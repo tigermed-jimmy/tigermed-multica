@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-shellwords"
+	"github.com/multica-ai/multica/server/internal/cli"
 )
 
 const (
@@ -282,10 +283,16 @@ func LoadConfig(overrides Overrides) (Config, error) {
 		runtimeName = overrides.RuntimeName
 	}
 
-	// Workspaces root: override > env > default (~/multica_workspaces or ~/multica_workspaces_<profile>)
+	// Workspaces root: override > env > CLI config file > default (~/multica_workspaces or ~/multica_workspaces_<profile>)
 	workspacesRoot := strings.TrimSpace(os.Getenv("MULTICA_WORKSPACES_ROOT"))
 	if overrides.WorkspacesRoot != "" {
 		workspacesRoot = overrides.WorkspacesRoot
+	}
+	if workspacesRoot == "" {
+		cliCfg, err := cli.LoadCLIConfigForProfile(profile)
+		if err == nil && cliCfg.WorkspacesRoot != "" {
+			workspacesRoot = cliCfg.WorkspacesRoot
+		}
 	}
 	if workspacesRoot == "" {
 		home, err := os.UserHomeDir()

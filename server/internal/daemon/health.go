@@ -25,6 +25,7 @@ type HealthResponse struct {
 	ActiveTaskCount int64             `json:"active_task_count"`
 	Agents          []string          `json:"agents"`
 	Workspaces      []healthWorkspace `json:"workspaces"`
+	WorkspacesRoot  string            `json:"workspaces_root"`
 }
 
 type healthWorkspace struct {
@@ -83,6 +84,7 @@ func (d *Daemon) healthHandler(startedAt time.Time) http.HandlerFunc {
 			ActiveTaskCount: d.activeTasks.Load(),
 			Agents:          agents,
 			Workspaces:      wsList,
+			WorkspacesRoot:  d.cfg.WorkspacesRoot,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

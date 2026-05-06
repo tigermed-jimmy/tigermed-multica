@@ -18,11 +18,15 @@ export interface DaemonStatus {
   profile?: string;
   /** Backend URL the daemon connects to. */
   serverUrl?: string;
+  /** Current effective workspaces root path. */
+  workspacesRoot?: string;
 }
 
 export interface DaemonPrefs {
   autoStart: boolean;
   autoStop: boolean;
+  /** User-configured workspaces root path. Persisted to CLI config.json. */
+  workspacesRoot?: string;
 }
 
 export const DAEMON_STATE_COLORS: Record<DaemonState, string> = {

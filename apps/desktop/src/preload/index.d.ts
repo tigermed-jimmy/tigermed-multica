@@ -44,11 +44,13 @@ interface DaemonStatus {
   workspaceCount?: number;
   profile?: string;
   serverUrl?: string;
+  workspacesRoot?: string;
 }
 
 interface DaemonPrefs {
   autoStart: boolean;
   autoStop: boolean;
+  workspacesRoot?: string;
 }
 
 interface DaemonAPI {
@@ -69,6 +71,7 @@ interface DaemonAPI {
   stopLogStream: () => void;
   onLogLine: (callback: (line: string) => void) => () => void;
   openLogFile: () => Promise<{ success: boolean; error?: string }>;
+  pickDirectory: () => Promise<{ canceled: boolean; path?: string }>;
 }
 
 interface UpdaterAPI {
