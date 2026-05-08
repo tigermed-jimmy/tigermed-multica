@@ -194,6 +194,33 @@ describe("ReadonlyContent file cards", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps full-screen markdown preview controls clickable in desktop drag regions", async () => {
+    previewAttachmentMarkdown.mockResolvedValue("# Preview title");
+
+    render(
+      <I18nProvider locale="en" resources={TEST_RESOURCES}>
+        <ReadonlyContent content="!file[desktop-controls.md](https://cdn.example.com/desktop-controls.md)" />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview desktop-controls.md" }));
+
+    await waitFor(() =>
+      expect(previewAttachmentMarkdown).toHaveBeenCalledWith(
+        "https://cdn.example.com/desktop-controls.md",
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Enter full screen" }));
+
+    expect(screen.getByRole("button", { name: "Exit full screen" })).toHaveClass(
+      "[-webkit-app-region:no-drag]",
+    );
+    expect(screen.getByRole("button", { name: "Close preview" })).toHaveClass(
+      "[-webkit-app-region:no-drag]",
+    );
+  });
+
   it("fills narrow viewports without overflowing in full-screen mode", async () => {
     previewAttachmentMarkdown.mockResolvedValue("# Preview title");
     vi.spyOn(window, "innerWidth", "get").mockReturnValue(320);

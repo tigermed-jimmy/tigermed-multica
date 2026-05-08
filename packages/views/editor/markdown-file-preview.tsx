@@ -94,7 +94,15 @@ function getFullscreenPreviewBounds(fallback: PreviewBounds): PreviewBounds {
 
 function DialogCloseButton({ label }: { label: string }) {
   return (
-    <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
+    <DialogClose
+      render={
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="[-webkit-app-region:no-drag]"
+        />
+      }
+    >
       <XIcon />
       <span className="sr-only">{label}</span>
     </DialogClose>
@@ -165,6 +173,7 @@ function MarkdownPreviewDialogContent({
               type="button"
               variant="ghost"
               size="icon-sm"
+              className="[-webkit-app-region:no-drag]"
               aria-label={fullscreenLabel}
               title={fullscreenLabel}
               onClick={() => setFullscreen((value) => !value)}
