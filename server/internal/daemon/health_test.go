@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -133,25 +133,10 @@ func TestShutdownHandlerRejectsNonPost(t *testing.T) {
 	}
 }
 
-func TestHealthHandlerRespondsWhileTaskRepoLookupWaitsOnGit(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen slow git remote: %v", err)
-	}
-	defer ln.Close()
-	accepted := make(chan struct{})
-	go func() {
-		conn, err := ln.Accept()
-		if err != nil {
-			return
-		}
-		close(accepted)
-		time.Sleep(2 * time.Second)
-		_ = conn.Close()
-	}()
-
+func TestHealthHandlerRespondsWhileTaskRepoLookupWaits(t *testing.T) {
 	const workspaceID = "ws-health"
-	repoURL := "http://" + ln.Addr().String() + "/org/repo.git"
+	const repoURL = "https://github.com/org/repo.git"
+	cache := newBlockingLookupRepoCache("/cache/org/repo.git")
 	d := &Daemon{
 		cfg: Config{CLIVersion: "v1.0.0"},
 		workspaces: map[string]*workspaceState{
@@ -162,26 +147,17 @@ func TestHealthHandlerRespondsWhileTaskRepoLookupWaitsOnGit(t *testing.T) {
 				taskRepoURLs:    map[string]struct{}{},
 			},
 		},
-		repoCache: repocache.New(t.TempDir(), slog.Default()),
+		repoCache: cache,
 		logger:    slog.Default(),
 	}
-
-	syncDone := make(chan struct{})
-	go func() {
-		_ = d.repoCache.Sync(workspaceID, []repocache.RepoInfo{{URL: repoURL}})
-		close(syncDone)
-	}()
-	select {
-	case <-accepted:
-	case <-time.After(time.Second):
-		t.Fatal("git clone did not connect to slow remote")
-	}
+	defer cache.release()
 
 	registerDone := make(chan struct{})
 	go func() {
 		d.registerTaskRepos(workspaceID, []RepoData{{URL: repoURL}})
 		close(registerDone)
 	}()
+	cache.waitForLookup(t)
 
 	rec := httptest.NewRecorder()
 	healthDone := make(chan struct{})
@@ -195,20 +171,64 @@ func TestHealthHandlerRespondsWhileTaskRepoLookupWaitsOnGit(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", rec.Code)
 		}
-	case <-time.After(200 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatal("/health blocked behind task repo cache lookup")
 	}
 
+	cache.release()
 	select {
 	case <-registerDone:
-	case <-time.After(3 * time.Second):
-		t.Fatal("registerTaskRepos did not unblock after git finished")
+	case <-time.After(time.Second):
+		t.Fatal("registerTaskRepos did not unblock after repo lookup finished")
 	}
+}
+
+type blockingLookupRepoCache struct {
+	path          string
+	lookupSeen    chan struct{}
+	releaseLookup chan struct{}
+	releaseOnce   sync.Once
+}
+
+func newBlockingLookupRepoCache(path string) *blockingLookupRepoCache {
+	return &blockingLookupRepoCache{
+		path:          path,
+		lookupSeen:    make(chan struct{}),
+		releaseLookup: make(chan struct{}),
+	}
+}
+
+func (c *blockingLookupRepoCache) Lookup(_, _ string) string {
 	select {
-	case <-syncDone:
-	case <-time.After(3 * time.Second):
-		t.Fatal("repo sync did not finish")
+	case <-c.lookupSeen:
+	default:
+		close(c.lookupSeen)
 	}
+	<-c.releaseLookup
+	return c.path
+}
+
+func (c *blockingLookupRepoCache) Sync(string, []repocache.RepoInfo) error {
+	return nil
+}
+
+func (c *blockingLookupRepoCache) CreateWorktree(repocache.WorktreeParams) (*repocache.WorktreeResult, error) {
+	return nil, nil
+}
+
+func (c *blockingLookupRepoCache) waitForLookup(t *testing.T) {
+	t.Helper()
+	select {
+	case <-c.lookupSeen:
+	case <-time.After(time.Second):
+		t.Fatal("registerTaskRepos did not call repo lookup")
+	}
+}
+
+func (c *blockingLookupRepoCache) release() {
+	c.releaseOnce.Do(func() {
+		close(c.releaseLookup)
+	})
 }
 
 func assertActiveTaskCount(t *testing.T, h http.HandlerFunc, want int64) {
