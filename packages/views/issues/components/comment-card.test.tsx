@@ -108,7 +108,7 @@ function renderComment(entry: TimelineEntry) {
       <CommentCard
         issueId="issue-1"
         entry={entry}
-        allReplies={new Map()}
+        replies={[]}
         currentUserId="user-1"
         onReply={vi.fn()}
         onEdit={vi.fn()}
