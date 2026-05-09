@@ -14,7 +14,7 @@ import (
 )
 
 // gcLoop periodically scans local workspace directories and removes those
-// whose issue is done/cancelled and hasn't been updated within the configured TTL.
+// whose issue is terminal and hasn't been updated within the configured TTL.
 func (d *Daemon) gcLoop(ctx context.Context) {
 	if !d.cfg.GCEnabled {
 		d.logger.Info("gc: disabled")
@@ -155,7 +155,7 @@ type gcAction int
 
 const (
 	gcActionSkip           gcAction = iota
-	gcActionClean                   // issue is done/cancelled and stale
+	gcActionClean                   // issue/task parent is terminal and stale
 	gcActionOrphan                  // no meta or unknown issue and dir is old
 	gcActionCleanArtifacts          // task completed long enough ago; drop regenerable artifacts only
 )
@@ -231,8 +231,7 @@ func (d *Daemon) gcDecisionIssue(ctx context.Context, taskDir string, meta *exec
 		return gcActionSkip
 	}
 
-	if (status.Status == "done" || status.Status == "cancelled") &&
-		time.Since(status.UpdatedAt) > d.cfg.GCTTL {
+	if isIssueTerminalForGC(status.Status) && time.Since(status.UpdatedAt) > d.cfg.GCTTL {
 		d.logger.Info("gc: eligible for cleanup",
 			"dir", filepath.Base(taskDir),
 			"kind", "issue",
@@ -256,6 +255,15 @@ func (d *Daemon) gcDecisionIssue(ctx context.Context, taskDir string, meta *exec
 	}
 
 	return gcActionSkip
+}
+
+func isIssueTerminalForGC(status string) bool {
+	switch status {
+	case "done", "cancelled", "archive":
+		return true
+	default:
+		return false
+	}
 }
 
 func (d *Daemon) gcDecisionChat(ctx context.Context, taskDir string, meta *execenv.GCMeta) gcAction {
