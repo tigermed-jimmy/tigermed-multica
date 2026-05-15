@@ -502,12 +502,6 @@ export function BoardView({
           )
         )}
 
-        {grouping === "status" && hiddenStatuses.length > 0 && (
-          <HiddenColumnsPanel
-            hiddenStatuses={hiddenStatuses}
-            myIssuesOpts={myIssuesOpts}
-          />
-        )}
       </div>
 
       <DragOverlay dropAnimation={null}>
