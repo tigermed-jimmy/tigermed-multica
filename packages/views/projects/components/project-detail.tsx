@@ -138,6 +138,10 @@ function ProjectIssuesContent({
       return BOARD_STATUSES.filter((s) => statusFilters.includes(s));
     return BOARD_STATUSES;
   }, [statusFilters]);
+  const hiddenStatuses = useMemo(
+    () => BOARD_STATUSES.filter((s) => !visibleStatuses.includes(s)),
+    [visibleStatuses],
+  );
 
   const updateIssueMutation = useUpdateIssue();
   const handleMoveIssue = useCallback(
@@ -180,6 +184,7 @@ function ProjectIssuesContent({
           assigneeGroupQueryKey={assigneeGroupQueryKey}
           assigneeGroupFilter={assigneeGroupFilter}
           visibleStatuses={visibleStatuses}
+          hiddenStatuses={hiddenStatuses}
           onMoveIssue={handleMoveIssue}
           childProgressMap={childProgressMap}
           myIssuesScope={scope}

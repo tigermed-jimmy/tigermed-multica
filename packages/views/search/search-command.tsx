@@ -32,7 +32,6 @@ import type {
 } from "@multica/core/types";
 import { api } from "@multica/core/api";
 import {
-  getPersistedCreateMode,
   openCreateIssueWithPreference,
   selectRecentIssues,
   useRecentIssuesStore,

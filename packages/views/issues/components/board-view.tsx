@@ -208,7 +208,7 @@ export function BoardView({
   assigneeGroupQueryKey,
   assigneeGroupFilter,
   visibleStatuses,
-  hiddenStatuses,
+  hiddenStatuses: _hiddenStatuses,
   onMoveIssue,
   childProgressMap = EMPTY_PROGRESS_MAP,
   myIssuesScope,
