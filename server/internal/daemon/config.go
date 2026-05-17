@@ -21,6 +21,18 @@ const (
 	DefaultHeartbeatInterval              = 15 * time.Second
 	DefaultAgentTimeout                   = 2 * time.Hour
 	DefaultCodexSemanticInactivityTimeout = 10 * time.Minute
+	// DefaultAgentIdleWatchdog is the per-task safety net that force-stops a
+	// run when the backend has emitted no message for this long AND its
+	// message queue is empty. Backends like Claude Code can hang indefinitely
+	// on a stuck child process (e.g. `docker ps` against a frozen dockerd),
+	// in which case `cmd.Wait()` never returns and the task sits at "running"
+	// for its full DefaultAgentTimeout (2 h). The previous 5 min default
+	// killed legitimate long assistant outputs (e.g. RFC-length writeups)
+	// where the model streams a single message for many minutes without any
+	// daemon-visible activity — see MUL-2300. 30 min keeps the safety net for
+	// truly stuck runs (dockerd hang) while leaving headroom for long writes.
+	// Set MULTICA_AGENT_IDLE_WATCHDOG=0 to disable.
+	DefaultAgentIdleWatchdog = 30 * time.Minute
 	DefaultRuntimeName                    = "Local Agent"
 	DefaultWorkspaceSyncInterval          = 30 * time.Second
 	DefaultHealthPort                     = 19514
@@ -67,6 +79,7 @@ type Config struct {
 	HeartbeatInterval              time.Duration
 	AgentTimeout                   time.Duration
 	CodexSemanticInactivityTimeout time.Duration
+	AgentIdleWatchdog              time.Duration // force-stop a run when the backend goes silent this long with an empty queue (0 = disabled)
 	ClaudeArgs                     []string
 	CodexArgs                      []string
 }
@@ -241,6 +254,14 @@ func LoadConfig(overrides Overrides) (Config, error) {
 		codexSemanticInactivityTimeout = overrides.CodexSemanticInactivityTimeout
 	}
 
+	// MULTICA_AGENT_IDLE_WATCHDOG=0 disables the per-task idle watchdog. We
+	// route 0 through durationFromEnv so the operator can opt out without
+	// patching the binary; any positive duration overrides DefaultAgentIdleWatchdog.
+	agentIdleWatchdog, err := durationFromEnv("MULTICA_AGENT_IDLE_WATCHDOG", DefaultAgentIdleWatchdog)
+	if err != nil {
+		return Config{}, err
+	}
+
 	maxConcurrentTasks, err := intFromEnv("MULTICA_DAEMON_MAX_CONCURRENT_TASKS", DefaultMaxConcurrentTasks)
 	if err != nil {
 		return Config{}, err
@@ -375,6 +396,7 @@ func LoadConfig(overrides Overrides) (Config, error) {
 		HeartbeatInterval:              heartbeatInterval,
 		AgentTimeout:                   agentTimeout,
 		CodexSemanticInactivityTimeout: codexSemanticInactivityTimeout,
+		AgentIdleWatchdog:              agentIdleWatchdog,
 		ClaudeArgs:                     claudeArgs,
 		CodexArgs:                      codexArgs,
 	}, nil
