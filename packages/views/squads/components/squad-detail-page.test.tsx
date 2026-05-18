@@ -179,9 +179,20 @@ vi.mock("@multica/core/paths", () => ({
 vi.mock("@multica/core/workspace/queries", () => ({
   agentListOptions: () => ({ queryKey: ["workspaces", "ws-1", "agents"] }),
   memberListOptions: () => ({ queryKey: ["workspaces", "ws-1", "members"] }),
+  squadMemberStatusOptions: () => ({
+    queryKey: ["workspaces", "ws-1", "squads", "squad-1", "member-status"],
+    queryFn: async () => [],
+  }),
   workspaceKeys: {
     squads: (id: string) => ["workspaces", id, "squads"],
     agents: (id: string) => ["workspaces", id, "agents"],
+    squadMemberStatus: (id: string, squadId: string) => [
+      "workspaces",
+      id,
+      "squads",
+      squadId,
+      "member-status",
+    ],
   },
 }));
 

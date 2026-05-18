@@ -72,6 +72,10 @@ vi.mock("../i18n", () => ({
           close: "Close",
           download_failed: "",
         },
+        file_card: {
+          enter_full_screen: "Enter full screen",
+          exit_full_screen: "Exit full screen",
+        },
       }),
   }),
 }));

@@ -505,7 +505,7 @@ describe("CreateIssueModal", () => {
       }),
     );
 
-    renderModal(<CreateIssueModal onClose={onClose} />);
+    renderModal(<CreateIssueModal onClose={onClose} data={{ project_id: "project-1" }} />);
     await user.type(screen.getByPlaceholderText("Issue title"), "Login bug");
     await user.click(screen.getByRole("button", { name: "Create Issue" }));
 
@@ -538,7 +538,7 @@ describe("CreateIssueModal", () => {
       }),
     );
 
-    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+    renderModal(<CreateIssueModal onClose={vi.fn()} data={{ project_id: "project-1" }} />);
     await user.type(screen.getByPlaceholderText("Issue title"), "Login bug");
     await user.click(screen.getByRole("button", { name: "Create Issue" }));
 
@@ -553,7 +553,7 @@ describe("CreateIssueModal", () => {
     const user = userEvent.setup();
     mockCreateIssue.mockRejectedValue(new Error("Server is overloaded, try again"));
 
-    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+    renderModal(<CreateIssueModal onClose={vi.fn()} data={{ project_id: "project-1" }} />);
     await user.type(screen.getByPlaceholderText("Issue title"), "Anything");
     await user.click(screen.getByRole("button", { name: "Create Issue" }));
 
@@ -567,7 +567,7 @@ describe("CreateIssueModal", () => {
     const user = userEvent.setup();
     mockCreateIssue.mockRejectedValue("network exploded");
 
-    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+    renderModal(<CreateIssueModal onClose={vi.fn()} data={{ project_id: "project-1" }} />);
     await user.type(screen.getByPlaceholderText("Issue title"), "Anything");
     await user.click(screen.getByRole("button", { name: "Create Issue" }));
 
