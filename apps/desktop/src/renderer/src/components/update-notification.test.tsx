@@ -39,6 +39,7 @@ beforeEach(() => {
     showNotification: vi.fn(),
     setUnreadBadge: vi.fn(),
     onInboxOpen: vi.fn(() => vi.fn()),
+    onNavigationGesture: vi.fn(() => vi.fn()),
   };
 
   window.updater = {

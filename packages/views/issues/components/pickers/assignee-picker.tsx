@@ -46,7 +46,7 @@ export function AssigneePicker({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   align,
-  width = "w-52",
+  width = "w-64",
 }: {
   assigneeType: IssueAssigneeType | null;
   assigneeId: string | null;
@@ -194,7 +194,7 @@ export function AssigneePicker({
                 }}
               >
                 <ActorAvatar actorType="agent" actorId={a.id} size={18} showStatusDot />
-                <span className={allowed ? "truncate" : "truncate text-muted-foreground"}>{a.name}</span>
+                <span className={`truncate ${allowed ? "" : "text-muted-foreground"}`}>{a.name}</span>
                 {a.visibility === "private" && (
                   <Lock className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
                 )}
@@ -221,7 +221,7 @@ export function AssigneePicker({
               }}
             >
               <ActorAvatar actorType="squad" actorId={s.id} size={18} />
-              <span>{s.name}</span>
+              <span className="truncate">{s.name}</span>
             </PickerItem>
           ))}
         </PickerSection>
