@@ -36,7 +36,8 @@ import { api } from "@multica/core/api";
 import { useTranscriptViewStore, type TranscriptSortDirection } from "@multica/core/agents/stores";
 import type { AgentTask, Agent, AgentRuntime } from "@multica/core/types/agent";
 import { redactSecrets } from "./redact";
-import type { TimelineItem } from "./build-timeline";
+import { isEditTool, looksLikeUnifiedDiff, type TimelineItem } from "./build-timeline";
+import { DiffViewer } from "./diff-viewer";
 import { useT } from "../../i18n";
 
 interface AgentTranscriptDialogProps {
@@ -679,6 +680,55 @@ interface TranscriptEventRowProps {
   isSelected: boolean;
 }
 
+interface ToolUseDiffPayload {
+  filePath?: string;
+  oldText?: string;
+  newText?: string;
+}
+
+function toolUseDiffPayload(input: Record<string, unknown> | undefined): ToolUseDiffPayload | null {
+  if (!input) return null;
+
+  const filePath =
+    (typeof input.file_path === "string" && input.file_path) ||
+    (typeof input.path === "string" && input.path) ||
+    undefined;
+
+  const oldText = typeof input.old_text === "string"
+    ? input.old_text
+    : typeof input.old_string === "string"
+      ? input.old_string
+      : undefined;
+  const newText = typeof input.new_text === "string"
+    ? input.new_text
+    : typeof input.new_string === "string"
+      ? input.new_string
+      : typeof input.content === "string"
+        ? input.content
+        : undefined;
+
+  if (oldText == null && newText == null) return null;
+  return { filePath, oldText, newText };
+}
+
+function redactedToolUseDiffPayload(input: Record<string, unknown> | undefined): ToolUseDiffPayload | null {
+  const parsed = toolUseDiffPayload(input);
+  if (!parsed) return null;
+  return {
+    filePath: parsed.filePath ? redactSecrets(parsed.filePath) : parsed.filePath,
+    oldText: parsed.oldText == null ? parsed.oldText : redactSecrets(parsed.oldText),
+    newText: parsed.newText == null ? parsed.newText : redactSecrets(parsed.newText),
+  };
+}
+
+function redactAndTruncate(text: string): string {
+  const redacted = redactSecrets(text);
+  if (redacted.length > 4000) {
+    return redacted.slice(0, 4000) + "\n... (truncated)";
+  }
+  return redacted;
+}
+
 const TranscriptEventRow = ({
   ref,
   item,
@@ -688,9 +738,18 @@ const TranscriptEventRow = ({
   const color = getEventColor(item);
   const label = getEventLabel(item);
   const summary = getEventSummary(item);
+  const parsedToolUseDiff =
+    item.type === "tool_use" && isEditTool(item.tool) && item.input
+      ? toolUseDiffPayload(item.input)
+      : null;
+  const toolUseHasInlineDiff =
+    item.type === "tool_use" && parsedToolUseDiff != null;
 
   const hasDetail =
-    (item.type === "tool_use" && item.input && Object.keys(item.input).length > 0) ||
+    (item.type === "tool_use" && (
+      (item.input && Object.keys(item.input).length > 0) ||
+      toolUseHasInlineDiff
+    )) ||
     (item.type === "tool_result" && item.output && item.output.length > 0) ||
     (item.type === "thinking" && item.content && item.content.length > 0) ||
     (item.type === "text" && item.content && item.content.length > 0) ||
@@ -765,20 +824,26 @@ const TranscriptEventRow = ({
 
 function EventDetailContent({ item }: { item: TimelineItem }) {
   switch (item.type) {
-    case "tool_use":
+    case "tool_use": {
+      if (isEditTool(item.tool) && item.input) {
+        const parsed = redactedToolUseDiffPayload(item.input);
+        if (parsed) {
+          return <DiffViewer oldText={parsed.oldText} newText={parsed.newText} filePath={parsed.filePath} />;
+        }
+      }
       return (
         <pre className="max-h-60 overflow-auto p-3 text-[11px] text-muted-foreground whitespace-pre-wrap break-all">
           {item.input ? redactSecrets(JSON.stringify(item.input, null, 2)) : ""}
         </pre>
       );
+    }
     case "tool_result":
+      if (item.output && looksLikeUnifiedDiff(item.output)) {
+        return <DiffViewer output={redactSecrets(item.output)} />;
+      }
       return (
         <pre className="max-h-60 overflow-auto p-3 text-[11px] text-muted-foreground whitespace-pre-wrap break-all">
-          {item.output
-            ? item.output.length > 4000
-              ? redactSecrets(item.output.slice(0, 4000)) + "\n... (truncated)"
-              : redactSecrets(item.output)
-            : ""}
+          {item.output ? redactAndTruncate(item.output) : ""}
         </pre>
       );
     case "thinking":

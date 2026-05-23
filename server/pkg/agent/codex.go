@@ -299,6 +299,14 @@ func (b *codexBackend) Execute(ctx context.Context, prompt string, opts ExecOpti
 		// Wait for the reader goroutine to finish so all output is accumulated.
 		<-readerDone
 
+		// Flush any buffered turn-level diff so abnormal exit paths (timeout,
+		// cancellation, abort) still record the latest snapshot. Run AFTER
+		// readerDone so any turn/diff/updated still in the stdout pipe at the
+		// moment the wait loop exited is buffered first. Normal turn endings
+		// already flushed during turn/completed, thread/status idle, or
+		// final_answer; a second call here is a safe no-op for them.
+		c.flushTurnDiff(c.turnID)
+
 		outputMu.Lock()
 		finalOutput := output.String()
 		outputMu.Unlock()
@@ -508,6 +516,10 @@ type codexClient struct {
 
 	turnErrorMu sync.Mutex
 	turnError   string // captured from turn/completed status=failed or terminal error notifications
+
+	fileChangeDeltaMu sync.Mutex
+	fileChangeDeltas  map[string]string
+	lastTurnDiffs     map[string]string
 }
 
 func (c *codexClient) setTurnError(msg string) {
@@ -734,8 +746,10 @@ func (c *codexClient) handleNotification(raw map[string]json.RawMessage) {
 	// Raw v2 notifications
 	if c.notificationProtocol != "legacy" {
 		if c.notificationProtocol == "unknown" &&
-			(method == "turn/started" || method == "turn/completed" ||
-				method == "thread/started" || strings.HasPrefix(method, "item/")) {
+			(strings.HasPrefix(method, "turn/") ||
+				strings.HasPrefix(method, "thread/") ||
+				strings.HasPrefix(method, "item/") ||
+				method == "error") {
 			c.notificationProtocol = "raw"
 		}
 
@@ -792,11 +806,13 @@ func (c *codexClient) handleEvent(msg map[string]any) {
 		}
 	case "patch_apply_end":
 		callID, _ := msg["call_id"].(string)
+		output, _ := msg["output"].(string)
 		if c.onMessage != nil {
 			c.onMessage(Message{
 				Type:   MessageToolResult,
 				Tool:   "patch_apply",
 				CallID: callID,
+				Output: output,
 			})
 		}
 	case "task_complete":
@@ -836,6 +852,17 @@ func (c *codexClient) handleRawNotification(method string, params map[string]any
 			c.onMessage(Message{Type: MessageStatus, Status: "running", SessionID: c.threadID})
 		}
 
+	case "turn/diff/updated":
+		if c.onSemanticActivity != nil {
+			c.onSemanticActivity("turn/diff/updated")
+		}
+		turnID, _ := params["turnId"].(string)
+		if turnID == "" {
+			turnID = c.turnID
+		}
+		diff, _ := params["diff"].(string)
+		c.emitTurnDiffUpdated(turnID, diff)
+
 	case "turn/completed":
 		turnID := extractNestedString(params, "turn", "id")
 		status := extractNestedString(params, "turn", "status")
@@ -869,6 +896,10 @@ func (c *codexClient) handleRawNotification(method string, params map[string]any
 			c.extractUsageFromMap(turn)
 		}
 
+		// Flush any buffered turn-level diff before signaling done so the
+		// final aggregate diff lands on the timeline as a single entry.
+		c.flushTurnDiff(turnID)
+
 		if c.onTurnDone != nil {
 			c.onTurnDone(aborted)
 		}
@@ -892,6 +923,7 @@ func (c *codexClient) handleRawNotification(method string, params map[string]any
 	case "thread/status/changed":
 		statusType := extractNestedString(params, "status", "type")
 		if statusType == "idle" && c.turnStarted {
+			c.flushTurnDiff(c.turnID)
 			if c.onTurnDone != nil {
 				c.onTurnDone(false)
 			}
@@ -939,6 +971,7 @@ func (c *codexClient) handleItemNotification(method string, params map[string]an
 		}
 
 	case method == "item/started" && itemType == "fileChange":
+		c.clearFileChangeDelta(itemID)
 		if c.onMessage != nil {
 			c.onMessage(Message{
 				Type:   MessageToolUse,
@@ -947,25 +980,43 @@ func (c *codexClient) handleItemNotification(method string, params map[string]an
 			})
 		}
 
+	case method == "item/fileChange/outputDelta" && itemType == "fileChange":
+		delta, _ := params["delta"].(string)
+		c.appendFileChangeDelta(itemID, delta)
+
 	case method == "item/completed" && itemType == "fileChange":
+		output := c.popFileChangeDelta(itemID)
+		if output == "" {
+			if aggregatedOutput, ok := item["aggregatedOutput"].(string); ok {
+				output = aggregatedOutput
+			} else if inlineOutput, ok := item["output"].(string); ok {
+				output = inlineOutput
+			}
+		}
 		if c.onMessage != nil {
 			c.onMessage(Message{
 				Type:   MessageToolResult,
 				Tool:   "patch_apply",
 				CallID: itemID,
+				Output: output,
 			})
 		}
 
 	case method == "item/completed" && itemType == "agentMessage":
 		text, _ := item["text"].(string)
+		phase, _ := item["phase"].(string)
+		isFinalAnswer := phase == "final_answer" && c.turnStarted
+		if isFinalAnswer {
+			// Flush the buffered diff before emitting the final-answer text:
+			// turn/diff/updated arrived earlier, so the transcript must show
+			// the patch_apply row above the final-answer message.
+			c.flushTurnDiff(c.turnID)
+		}
 		if text != "" && c.onMessage != nil {
 			c.onMessage(Message{Type: MessageText, Content: text})
 		}
-		phase, _ := item["phase"].(string)
-		if phase == "final_answer" && c.turnStarted {
-			if c.onTurnDone != nil {
-				c.onTurnDone(false)
-			}
+		if isFinalAnswer && c.onTurnDone != nil {
+			c.onTurnDone(false)
 		}
 	}
 }
@@ -990,6 +1041,103 @@ func describeCodexItemProgressActivity(method, itemType, itemID string) string {
 		return fmt.Sprintf("%s:%s", method, itemType)
 	}
 	return fmt.Sprintf("%s:%s:%s", method, itemType, itemID)
+}
+
+func (c *codexClient) clearFileChangeDelta(itemID string) {
+	if itemID == "" {
+		return
+	}
+	c.fileChangeDeltaMu.Lock()
+	defer c.fileChangeDeltaMu.Unlock()
+	if c.fileChangeDeltas == nil {
+		c.fileChangeDeltas = make(map[string]string)
+		return
+	}
+	delete(c.fileChangeDeltas, itemID)
+}
+
+func (c *codexClient) appendFileChangeDelta(itemID, delta string) {
+	if itemID == "" || delta == "" {
+		return
+	}
+	c.fileChangeDeltaMu.Lock()
+	defer c.fileChangeDeltaMu.Unlock()
+	if c.fileChangeDeltas == nil {
+		c.fileChangeDeltas = make(map[string]string)
+	}
+	c.fileChangeDeltas[itemID] += delta
+}
+
+func (c *codexClient) popFileChangeDelta(itemID string) string {
+	if itemID == "" {
+		return ""
+	}
+	c.fileChangeDeltaMu.Lock()
+	defer c.fileChangeDeltaMu.Unlock()
+	if c.fileChangeDeltas == nil {
+		return ""
+	}
+	output := c.fileChangeDeltas[itemID]
+	delete(c.fileChangeDeltas, itemID)
+	return output
+}
+
+// emitTurnDiffUpdated buffers the latest aggregate diff for a turn. The diff
+// is held until the turn finishes (via turn/completed, thread/status idle,
+// final_answer agentMessage, or an abnormal exit such as timeout/cancel) and
+// is emitted by flushTurnDiff. Codex can send several turn/diff/updated
+// notifications per turn as the agent edits and revises files; appending
+// each snapshot to the append-only task timeline would leave stale rows for
+// edit-then-revert sequences. Buffering emits only the final state.
+func (c *codexClient) emitTurnDiffUpdated(turnID, diff string) {
+	key := turnID
+	if key == "" {
+		key = "_unknown"
+	}
+
+	c.fileChangeDeltaMu.Lock()
+	if c.lastTurnDiffs == nil {
+		c.lastTurnDiffs = make(map[string]string)
+	}
+	c.lastTurnDiffs[key] = diff
+	c.fileChangeDeltaMu.Unlock()
+}
+
+// flushTurnDiff emits the buffered diff for a completed turn, if any. Empty
+// diffs (turns that end with no net file changes) are dropped so no stale
+// patch_apply row appears on the timeline.
+func (c *codexClient) flushTurnDiff(turnID string) {
+	key := turnID
+	if key == "" {
+		key = "_unknown"
+	}
+
+	c.fileChangeDeltaMu.Lock()
+	diff, ok := c.lastTurnDiffs[key]
+	if ok {
+		delete(c.lastTurnDiffs, key)
+	}
+	c.fileChangeDeltaMu.Unlock()
+
+	if !ok || diff == "" {
+		return
+	}
+
+	if c.onMessage != nil {
+		c.onMessage(Message{
+			Type:   MessageToolResult,
+			Tool:   "patch_apply",
+			CallID: codexTurnDiffCallID(turnID),
+			Output: diff,
+		})
+	}
+}
+
+func codexTurnDiffCallID(turnID string) string {
+	if turnID == "" {
+		return "turn-diff"
+	}
+	return turnID + ":diff"
 }
 
 // extractUsageFromMap extracts token usage from a map that may contain
