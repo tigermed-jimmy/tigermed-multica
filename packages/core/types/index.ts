@@ -1,5 +1,11 @@
 export type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction } from "./issue";
 export type {
+  IssueTemplate,
+  IssueTemplateSummary,
+  CreateIssueTemplateRequest,
+  UpdateIssueTemplateRequest,
+} from "./issue-template";
+export type {
   Agent,
   AgentStatus,
   AgentRuntimeMode,

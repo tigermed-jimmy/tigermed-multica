@@ -151,6 +151,19 @@
     "set_parent": "设置父 issue...",
     "add_subissue": "添加子 issue...",
     "remove_parent": "移除父级",
+    "template": {
+      "trigger": "套用 Issue 模板",
+      "title": "选择模板",
+      "description": "选择后会把模板的 issue 标题和内容带入当前表单。",
+      "empty_title": "还没有 Issue模板",
+      "empty_description": "先到配置里的 Issue模板 页面创建模板。",
+      "manage": "前往 Issue模板",
+      "apply_failed": "套用 Issue模板 失败",
+      "confirm_title": "覆盖当前标题和内容？",
+      "confirm_description": "套用模板会替换当前已输入的 issue 标题和内容，其他字段不会改变。",
+      "confirm_cancel": "取消",
+      "confirm_apply": "确认覆盖"
+    },
     "set_parent_picker": {
       "title": "设置父 issue",
       "description": "搜索一个 issue 设为父级"

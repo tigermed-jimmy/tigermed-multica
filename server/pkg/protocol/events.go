@@ -67,6 +67,11 @@ const (
 	EventSkillUpdated = "skill:updated"
 	EventSkillDeleted = "skill:deleted"
 
+	// Issue template events
+	EventIssueTemplateCreated = "issue_template:created"
+	EventIssueTemplateUpdated = "issue_template:updated"
+	EventIssueTemplateDeleted = "issue_template:deleted"
+
 	// Chat events
 	EventChatMessage        = "chat:message"
 	EventChatDone           = "chat:done"

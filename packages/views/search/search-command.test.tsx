@@ -108,6 +108,7 @@ vi.mock("@multica/core/paths", () => ({
     agents: () => "/ws-test/agents",
     runtimes: () => "/ws-test/runtimes",
     skills: () => "/ws-test/skills",
+    issueTemplates: () => "/ws-test/issue-templates",
     settings: () => "/ws-test/settings",
     issueDetail: (id: string) => `/ws-test/issues/${id}`,
     memberDetail: (id: string) => `/ws-test/members/${id}`,
