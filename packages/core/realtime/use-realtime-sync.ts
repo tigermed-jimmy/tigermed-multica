@@ -21,6 +21,7 @@ import {
   agentTasksKeys,
 } from "../agents/queries";
 import { githubKeys } from "../github/queries";
+import { issueTemplateKeys } from "../issue-templates/queries";
 import {
   onIssueCreated,
   onIssueUpdated,
@@ -162,6 +163,7 @@ function invalidateWorkspaceScopedQueries(qc: QueryClient): void {
     qc.invalidateQueries({ queryKey: agentTaskSnapshotKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: agentActivityKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: agentRunCountsKeys.all(wsId) });
+    qc.invalidateQueries({ queryKey: issueTemplateKeys.all(wsId) });
   }
   qc.invalidateQueries({ queryKey: workspaceKeys.list() });
 }
@@ -237,6 +239,10 @@ export function useRealtimeSync(
       skill: () => {
         const wsId = getCurrentWsId();
         if (wsId) qc.invalidateQueries({ queryKey: workspaceKeys.skills(wsId) });
+      },
+      issue_template: () => {
+        const wsId = getCurrentWsId();
+        if (wsId) qc.invalidateQueries({ queryKey: issueTemplateKeys.all(wsId) });
       },
       project: () => {
         const wsId = getCurrentWsId();

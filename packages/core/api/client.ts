@@ -36,6 +36,10 @@ import type {
   CreateSkillRequest,
   UpdateSkillRequest,
   SetAgentSkillsRequest,
+  IssueTemplate,
+  IssueTemplateSummary,
+  CreateIssueTemplateRequest,
+  UpdateIssueTemplateRequest,
   PersonalAccessToken,
   CreatePersonalAccessTokenRequest,
   CreatePersonalAccessTokenResponse,
@@ -149,6 +153,12 @@ import {
   UserSchema,
   WebhookDeliveryResponseSchema,
 } from "./schemas";
+import {
+  EMPTY_ISSUE_TEMPLATE_DETAIL,
+  EMPTY_ISSUE_TEMPLATE_SUMMARY_LIST,
+  IssueTemplateDetailSchema,
+  IssueTemplateSummaryListSchema,
+} from "../issue-templates/schemas";
 
 /** Identifies the calling client to the server.
  *  Sent on every HTTP request as X-Client-Platform / X-Client-Version /
@@ -1284,6 +1294,45 @@ export class ApiClient {
       method: "PUT",
       body: JSON.stringify(data),
     });
+  }
+
+  // Issue templates
+  async listIssueTemplates(): Promise<IssueTemplateSummary[]> {
+    const raw = await this.fetch("/api/issue-templates");
+    return parseWithFallback(raw, IssueTemplateSummaryListSchema, EMPTY_ISSUE_TEMPLATE_SUMMARY_LIST, {
+      endpoint: "listIssueTemplates",
+    });
+  }
+
+  async getIssueTemplate(id: string): Promise<IssueTemplate> {
+    const raw = await this.fetch(`/api/issue-templates/${id}`);
+    return parseWithFallback(raw, IssueTemplateDetailSchema, EMPTY_ISSUE_TEMPLATE_DETAIL, {
+      endpoint: "getIssueTemplate",
+    });
+  }
+
+  async createIssueTemplate(data: CreateIssueTemplateRequest): Promise<IssueTemplate> {
+    const raw = await this.fetch("/api/issue-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueTemplateDetailSchema, EMPTY_ISSUE_TEMPLATE_DETAIL, {
+      endpoint: "createIssueTemplate",
+    });
+  }
+
+  async updateIssueTemplate(id: string, data: UpdateIssueTemplateRequest): Promise<IssueTemplate> {
+    const raw = await this.fetch(`/api/issue-templates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueTemplateDetailSchema, EMPTY_ISSUE_TEMPLATE_DETAIL, {
+      endpoint: "updateIssueTemplate",
+    });
+  }
+
+  async deleteIssueTemplate(id: string): Promise<void> {
+    await this.fetch(`/api/issue-templates/${id}`, { method: "DELETE" });
   }
 
   // Personal Access Tokens

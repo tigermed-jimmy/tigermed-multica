@@ -21,7 +21,9 @@ function I18nWrapper({ children }: { children: ReactNode }) {
 
 const mockPush = vi.hoisted(() => vi.fn());
 const mockCreateIssue = vi.hoisted(() => vi.fn());
-const mockSetDraft = vi.hoisted(() => vi.fn());
+const mockSetDraft = vi.hoisted(() => vi.fn((patch: Record<string, unknown>) => {
+  Object.assign(mockDraftStore.draft, patch);
+}));
 const mockClearDraft = vi.hoisted(() => vi.fn());
 const mockSetLastAssignee = vi.hoisted(() => vi.fn());
 const mockSetKeepOpen = vi.hoisted(() => vi.fn());
@@ -87,9 +89,33 @@ vi.mock("@multica/core/issues/stores/quick-create-store", () => ({
     (selector ? selector(mockQuickCreateStore) : mockQuickCreateStore),
 }));
 
+vi.mock("@multica/core/issues/stores/create-mode-store", () => ({
+  useCreateModeStore: (selector?: (state: { lastMode: string; setLastMode: () => void }) => unknown) =>
+    selector ? selector({ lastMode: "manual", setLastMode: vi.fn() }) : { lastMode: "manual", setLastMode: vi.fn() },
+}));
+
 vi.mock("@multica/core/issues/mutations", () => ({
   useCreateIssue: () => ({ mutateAsync: mockCreateIssue }),
   useUpdateIssue: () => ({ mutate: vi.fn() }),
+}));
+
+vi.mock("@multica/core/issue-templates", () => ({
+  issueTemplateListOptions: () => ({
+    queryKey: ["issue-templates", "ws-test", "list"],
+    queryFn: () => Promise.resolve([
+      {
+        id: "template-1",
+        workspace_id: "ws-test",
+        name: "Bug report",
+        issue_title: "Investigate login bug",
+        issue_content: "## Context\n\nLogin fails",
+        config: {},
+        created_by: null,
+        created_at: "2026-05-12T00:00:00Z",
+        updated_at: "2026-05-12T00:00:00Z",
+      },
+    ]),
+  }),
 }));
 
 vi.mock("@multica/core/hooks/use-file-upload", () => ({
@@ -129,7 +155,19 @@ vi.mock("@multica/core/api", async () => {
     typeof import("@multica/core/api/schemas")
   >("@multica/core/api/schemas");
   return {
-    api: {},
+    api: {
+      getIssueTemplate: vi.fn().mockResolvedValue({
+        id: "template-1",
+        workspace_id: "ws-test",
+        name: "Bug report",
+        issue_title: "Investigate login bug",
+        issue_content: "## Context\n\nLogin fails",
+        config: {},
+        created_by: null,
+        created_at: "2026-05-12T00:00:00Z",
+        updated_at: "2026-05-12T00:00:00Z",
+      }),
+    },
     ApiError,
     parseWithFallback,
     DuplicateIssueErrorBodySchema,
@@ -142,6 +180,11 @@ vi.mock("../editor", () => {
     const [value, setValue] = useState(defaultValue || "");
     useImperativeHandle(ref, () => ({
       getMarkdown: () => valueRef.current,
+      setMarkdown: (markdown: string) => {
+        valueRef.current = markdown;
+        setValue(markdown);
+        onUpdate?.(markdown);
+      },
       clearContent: () => {
         valueRef.current = "";
         setValue("");
@@ -227,10 +270,14 @@ vi.mock("../projects/components/project-picker", () => ({
 }));
 
 vi.mock("@multica/ui/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-root">{children}</div>,
+  Dialog: ({ children, open = true }: { children: React.ReactNode; open?: boolean }) =>
+    open ? <div data-testid="dialog-root">{children}</div> : null,
   DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
@@ -332,10 +379,16 @@ describe("CreateIssueModal", () => {
     mockSetKeepOpen.mockImplementation((v: boolean) => {
       mockQuickCreateStore.keepOpen = v;
     });
-    // Reset the shared draft mock so per-test assignee seeding (squad / agent)
-    // doesn't leak into the next test in the suite.
-    mockDraftStore.draft.assigneeType = undefined;
-    mockDraftStore.draft.assigneeId = undefined;
+    Object.assign(mockDraftStore.draft, {
+      title: "",
+      description: "",
+      status: "todo",
+      priority: "none",
+      assigneeType: undefined,
+      assigneeId: undefined,
+      startDate: null,
+      dueDate: null,
+    });
     mockCreateIssue.mockResolvedValue({
       id: "issue-123",
       identifier: "TES-123",
@@ -460,6 +513,39 @@ describe("CreateIssueModal", () => {
         }),
       );
     });
+  });
+
+  it("applies an issue template to title and description", async () => {
+    const user = userEvent.setup();
+
+    renderModal(<CreateIssueModal onClose={vi.fn()} data={{ project_id: "project-1" }} />);
+
+    await screen.findByRole("button", { name: "Apply Issue Template" });
+    await user.click(screen.getByRole("button", { name: "Apply Issue Template" }));
+    await user.click(await screen.findByText("Bug report"));
+
+    expect(screen.getByPlaceholderText("Issue title")).toHaveValue("Investigate login bug");
+    expect(screen.getByPlaceholderText("Add description...")).toHaveValue("## Context\n\nLogin fails");
+  });
+
+  it("confirms before overwriting existing title and description with a template", async () => {
+    const user = userEvent.setup();
+
+    renderModal(<CreateIssueModal onClose={vi.fn()} data={{ project_id: "project-1" }} />);
+
+    await user.type(screen.getByPlaceholderText("Issue title"), "Existing title");
+    await user.type(screen.getByPlaceholderText("Add description..."), "Existing body");
+    await user.click(await screen.findByRole("button", { name: "Apply Issue Template" }));
+    await user.click(await screen.findByText("Bug report"));
+
+    expect(await screen.findByText("Overwrite current title and content?")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Issue title")).toHaveValue("Existing title");
+    expect(screen.getByPlaceholderText("Add description...")).toHaveValue("Existing body");
+
+    await user.click(screen.getByRole("button", { name: "Overwrite" }));
+
+    expect(screen.getByPlaceholderText("Issue title")).toHaveValue("Investigate login bug");
+    expect(screen.getByPlaceholderText("Add description...")).toHaveValue("## Context\n\nLogin fails");
   });
 
   // Manual → agent must also forward the picked squad. Without this branch

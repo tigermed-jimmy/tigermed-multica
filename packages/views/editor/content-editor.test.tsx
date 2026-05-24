@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
@@ -70,6 +71,7 @@ vi.mock("@tiptap/react", () => ({
 }));
 
 import { ContentEditor } from "./content-editor";
+import type { ContentEditorRef } from "./content-editor";
 
 describe("ContentEditor", () => {
   beforeEach(() => {
@@ -98,6 +100,17 @@ describe("ContentEditor", () => {
     fireEvent.mouseDown(screen.getByTestId("prosemirror"));
 
     expect(mockFocus).not.toHaveBeenCalled();
+  });
+
+  it("sets markdown content through the imperative ref", () => {
+    const ref = createRef<ContentEditorRef>();
+    render(<ContentEditor ref={ref} placeholder="Add description..." />);
+
+    ref.current?.setMarkdown("## Template\n\nBody");
+
+    expect(mockSetContent).toHaveBeenCalledWith("## Template\n\nBody", {
+      contentType: "markdown",
+    });
   });
 
   it("syncs editor content when defaultValue changes externally and editor is unfocused", () => {

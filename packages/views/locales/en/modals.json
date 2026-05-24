@@ -151,6 +151,19 @@
     "set_parent": "Set parent issue...",
     "add_subissue": "Add sub-issue...",
     "remove_parent": "Remove parent",
+    "template": {
+      "trigger": "Apply Issue Template",
+      "title": "Select template",
+      "description": "The selected template fills the issue title and content.",
+      "empty_title": "No issue templates yet",
+      "empty_description": "Create one from the Issue Templates page under Configure.",
+      "manage": "Open Issue Templates",
+      "apply_failed": "Failed to apply issue template",
+      "confirm_title": "Overwrite current title and content?",
+      "confirm_description": "Applying a template replaces the current issue title and content. Other fields stay unchanged.",
+      "confirm_cancel": "Cancel",
+      "confirm_apply": "Overwrite"
+    },
     "set_parent_picker": {
       "title": "Set parent issue",
       "description": "Search for an issue to set as the parent of the new issue"

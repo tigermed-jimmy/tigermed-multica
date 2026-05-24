@@ -563,6 +563,18 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 			})
 
+			// Issue templates
+			r.Route("/api/issue-templates", func(r chi.Router) {
+				r.Get("/", h.ListIssueTemplates)
+				r.Post("/", h.CreateIssueTemplate)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", h.GetIssueTemplate)
+					r.Put("/", h.UpdateIssueTemplate)
+					r.Delete("/", h.DeleteIssueTemplate)
+				})
+			})
+
+
 			// Dashboard — workspace-wide token + run-time rollups for the
 			// "/{slug}/dashboard" page. Optional ?project_id filter scopes
 			// the rollup to a single project.
