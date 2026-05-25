@@ -493,6 +493,7 @@ export const EMPTY_PIN_LIST: PinnedItem[] = [];
 const InboxItemSchema: z.ZodType<InboxItem> = z.object({
   id: z.string(),
   workspace_id: z.string().default(""),
+  workspace_slug: z.string().default(""),
   // Recipient is always a real actor in the dataset, but defend against
   // either field going missing — mobile's actor lookup tolerates null.
   recipient_type: z.enum(["member", "agent"]).catch("member"),

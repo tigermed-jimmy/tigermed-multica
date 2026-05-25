@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<IssueStatus, string> = {
   done: "Done",
   blocked: "Blocked",
   cancelled: "Cancelled",
+  archive: "Archive",
 };
 
 const PRIORITY_LABEL: Record<IssuePriority, string> = {
