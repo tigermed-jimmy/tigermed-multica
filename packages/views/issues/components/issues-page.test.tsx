@@ -526,7 +526,7 @@ describe("IssuesPage (shared)", () => {
     expect(screen.getAllByText("In Progress").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("does not render the hidden columns panel in board view", async () => {
+  it("renders the hidden columns panel in board view when statuses are filtered", async () => {
     mockViewState.statusFilters = ["todo"];
     mockListIssues.mockImplementation((params: any) =>
       Promise.resolve({
@@ -538,7 +538,7 @@ describe("IssuesPage (shared)", () => {
     renderWithQuery(<IssuesPage />);
 
     await screen.findByText("Implement auth");
-    expect(screen.queryByText("Hidden columns")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hidden columns")).toBeInTheDocument();
   });
 
   it("groups board columns by assignee", async () => {
