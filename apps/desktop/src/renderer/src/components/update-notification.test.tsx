@@ -40,6 +40,8 @@ beforeEach(() => {
     setUnreadBadge: vi.fn(),
     onInboxOpen: vi.fn(() => vi.fn()),
     onNavigationGesture: vi.fn(() => vi.fn()),
+    pickDirectory: vi.fn(() => Promise.resolve({ ok: false, reason: "cancelled" as const })),
+    validateLocalDirectory: vi.fn(() => Promise.resolve({ ok: true })),
   };
 
   window.updater = {
