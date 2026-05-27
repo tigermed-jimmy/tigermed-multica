@@ -1,10 +1,10 @@
 "use client";
 
 import { cn } from "@multica/ui/lib/utils";
-import { SidebarTrigger, useOptionalSidebar } from "@multica/ui/components/ui/sidebar";
+import { SidebarTrigger, useSidebarSafe } from "@multica/ui/components/ui/sidebar";
 
 function SidebarToggle() {
-  const sidebar = useOptionalSidebar();
+  const sidebar = useSidebarSafe();
 
   if (!sidebar) {
     return null;

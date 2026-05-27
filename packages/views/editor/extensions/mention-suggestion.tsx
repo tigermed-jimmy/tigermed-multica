@@ -308,6 +308,7 @@ function MentionRow({
     const isClosed = item.status === "done" || item.status === "cancelled" || item.status === "archive";
     return (
       <button
+        type="button"
         ref={buttonRef}
         className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs transition-colors ${
           selected ? "bg-accent" : "hover:bg-accent/50"
@@ -346,6 +347,7 @@ function MentionRow({
 
   return (
     <button
+      type="button"
       ref={buttonRef}
       className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs transition-colors ${
         selected ? "bg-accent" : "hover:bg-accent/50"
