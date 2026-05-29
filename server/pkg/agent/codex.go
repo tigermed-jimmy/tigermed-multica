@@ -1148,6 +1148,12 @@ type codexClient struct {
 	fileChangeDeltaMu sync.Mutex
 	fileChangeDeltas  map[string]string
 	lastTurnDiffs     map[string]string
+
+	// agentMsgDeltas accumulates the assistant text streamed via
+	// item/agentMessage/delta, keyed by item id. item/completed reads it to
+	// emit only the unstreamed remainder, so streamed text is never doubled.
+	agentMsgDeltaMu sync.Mutex
+	agentMsgDeltas  map[string]string
 }
 
 func (c *codexClient) setTurnError(msg string) {
@@ -1649,6 +1655,19 @@ func (c *codexClient) handleItemNotification(method string, params map[string]an
 			})
 		}
 
+	case method == "item/agentMessage/delta" && itemType == "agentMessage":
+		// Stream the assistant reply token-by-token so the transcript fills in
+		// live instead of appearing as one block at item/completed. The daemon
+		// batches these via its 500ms flush and the frontend coalesces adjacent
+		// text fragments, so no downstream change is needed.
+		delta, _ := params["delta"].(string)
+		if delta != "" {
+			c.appendAgentMessageDelta(itemID, delta)
+			if c.onMessage != nil {
+				c.onMessage(Message{Type: MessageText, Content: delta})
+			}
+		}
+
 	case method == "item/completed" && itemType == "agentMessage":
 		text, _ := item["text"].(string)
 		phase, _ := item["phase"].(string)
@@ -1659,8 +1678,12 @@ func (c *codexClient) handleItemNotification(method string, params map[string]an
 			// the patch_apply row above the final-answer message.
 			c.flushTurnDiff(c.turnID)
 		}
-		if text != "" && c.onMessage != nil {
-			c.onMessage(Message{Type: MessageText, Content: text})
+		// Emit only the text not already streamed via deltas. When no deltas
+		// streamed (short reply, or a backend that doesn't stream), the whole
+		// text is the remainder — identical to the pre-streaming behavior.
+		remainder := c.unstreamedAgentMessage(itemID, text)
+		if remainder != "" && c.onMessage != nil {
+			c.onMessage(Message{Type: MessageText, Content: remainder})
 		}
 		if isFinalAnswer && c.onTurnDone != nil {
 			c.onTurnDone(false)
@@ -1719,6 +1742,40 @@ func (c *codexClient) popFileChangeDelta(itemID string) string {
 	output := c.fileChangeDeltas[itemID]
 	delete(c.fileChangeDeltas, itemID)
 	return output
+}
+
+func (c *codexClient) appendAgentMessageDelta(itemID, delta string) {
+	if itemID == "" || delta == "" {
+		return
+	}
+	c.agentMsgDeltaMu.Lock()
+	defer c.agentMsgDeltaMu.Unlock()
+	if c.agentMsgDeltas == nil {
+		c.agentMsgDeltas = make(map[string]string)
+	}
+	c.agentMsgDeltas[itemID] += delta
+}
+
+// unstreamedAgentMessage returns the portion of the completed text that was not
+// already emitted as deltas, and clears the per-item buffer. With no streamed
+// deltas it returns the full text. If the completed text diverges from what was
+// streamed (should not happen under the codex contract), it returns "" so the
+// streamed transcript is not duplicated or garbled.
+func (c *codexClient) unstreamedAgentMessage(itemID, text string) string {
+	c.agentMsgDeltaMu.Lock()
+	defer c.agentMsgDeltaMu.Unlock()
+	streamed := ""
+	if c.agentMsgDeltas != nil {
+		streamed = c.agentMsgDeltas[itemID]
+		delete(c.agentMsgDeltas, itemID)
+	}
+	if streamed == "" {
+		return text
+	}
+	if strings.HasPrefix(text, streamed) {
+		return text[len(streamed):]
+	}
+	return ""
 }
 
 // emitTurnDiffUpdated buffers the latest aggregate diff for a turn. The diff
