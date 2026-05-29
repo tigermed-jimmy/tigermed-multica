@@ -379,6 +379,18 @@ func writeSkillFiles(skillsDir string, skills []SkillContextForEnv, manifest *si
 	return nil
 }
 
+// renderSkillBullet renders a skill as a markdown list item for the skill
+// listings in AGENTS.md / issue_context.md. The description is appended as the
+// per-skill trigger signal when present so the agent can match a skill to its
+// task; skills without a description fall back to a bare name (no dangling em
+// dash).
+func renderSkillBullet(skill SkillContextForEnv) string {
+	if d := strings.TrimSpace(skill.Description); d != "" {
+		return fmt.Sprintf("- **%s** — %s\n", skill.Name, d)
+	}
+	return fmt.Sprintf("- **%s**\n", skill.Name)
+}
+
 // renderIssueContext builds the markdown content for issue_context.md.
 func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	if ctx.AutopilotRunID != "" {
@@ -407,7 +419,7 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("## Agent Skills\n\n")
 		b.WriteString("The following skills are available to you:\n\n")
 		for _, skill := range ctx.AgentSkills {
-			fmt.Fprintf(&b, "- **%s**\n", skill.Name)
+			b.WriteString(renderSkillBullet(skill))
 		}
 		b.WriteString("\n")
 	}
@@ -430,7 +442,7 @@ func renderQuickCreateContext(ctx TaskContextForEnv) string {
 	if len(ctx.AgentSkills) > 0 {
 		b.WriteString("## Agent Skills\n\n")
 		for _, skill := range ctx.AgentSkills {
-			fmt.Fprintf(&b, "- **%s**\n", skill.Name)
+			b.WriteString(renderSkillBullet(skill))
 		}
 		b.WriteString("\n")
 	}
@@ -470,7 +482,7 @@ func renderAutopilotContext(ctx TaskContextForEnv) string {
 		b.WriteString("## Agent Skills\n\n")
 		b.WriteString("The following skills are available to you:\n\n")
 		for _, skill := range ctx.AgentSkills {
-			fmt.Fprintf(&b, "- **%s**\n", skill.Name)
+			b.WriteString(renderSkillBullet(skill))
 		}
 		b.WriteString("\n")
 	}
