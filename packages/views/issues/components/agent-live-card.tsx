@@ -473,7 +473,7 @@ function AgentLiveRow({ task, items, messages, activity, agentName, onRequestCan
             ? t(($) => $.agent_live.is_waiting_local_directory, { name: agentName })
             : isQueued
               ? t(($) => $.agent_live.is_queued, { name: agentName })
-              : t(($) => $.agent_live.is_working, { name: agentName })}
+              : agentName}
         </span>
         {/* Running tasks: surface the live stage (running command / reading
             files / thinking / typing) instead of a generic "is working" so

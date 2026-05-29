@@ -13,7 +13,8 @@
     "in_review": "리뷰 중",
     "done": "완료",
     "blocked": "막힘",
-    "cancelled": "취소됨"
+    "cancelled": "취소됨",
+    "archive": "보관"
   },
   "priority": {
     "urgent": "긴급",
@@ -267,6 +268,7 @@
     "copy_action": "복사",
     "copied_toast": "복사했습니다",
     "edit_action": "수정",
+    "download_attachment": "{{filename}} 다운로드",
     "update_failed": "댓글을 업데이트하지 못했습니다",
     "send_failed": "댓글을 보내지 못했습니다",
     "send_reply_failed": "답글을 보내지 못했습니다",
@@ -304,7 +306,6 @@
     "filter_active_label": "작업 중인 에이전트만 보는 중"
   },
   "agent_live": {
-    "is_working": "{{name}} 작업 중",
     "is_queued": "{{name}} 대기 중",
     "is_waiting_local_directory": "{{name}} 로컬 디렉터리 대기 중",
     "queued_elapsed_prefix": "{{elapsed}} 동안 대기 중",

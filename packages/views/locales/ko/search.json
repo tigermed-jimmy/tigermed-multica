@@ -18,6 +18,7 @@
     "agents": "에이전트",
     "runtimes": "런타임",
     "skills": "스킬",
+    "issue_templates": "이슈 템플릿",
     "settings": "설정"
   },
   "commands": {

@@ -326,14 +326,17 @@ describe("AgentLiveCard queued rendering", () => {
     await waitFor(() => {
       expect(screen.getByText(/agents working/)).toBeTruthy();
     });
-    expect(screen.queryByText(/is working/)).toBeNull();
+    expect(screen.queryByText(/is queued/)).toBeNull();
 
     await act(async () => {
       rtlFireEvent.click(screen.getByText(/agents working/));
     });
 
-    const working = await screen.findByText(/is working/);
-    const queued = screen.getByText(/is queued/);
+    // Running row renders just the agent name (the live stage label sits
+    // beside it via AgentActivityLabel). Queued row renders the localized
+    // "{name} is queued" string instead.
+    const working = await screen.findByText("Agent agent-r");
+    const queued = screen.getByText(/Agent agent-q is queued/);
     // Running row appears earlier in the document order.
     expect(working.compareDocumentPosition(queued) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

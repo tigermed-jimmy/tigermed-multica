@@ -68,6 +68,7 @@ import koWorkspace from "./ko/workspace.json";
 import koProjects from "./ko/projects.json";
 import koAutopilots from "./ko/autopilots.json";
 import koSkills from "./ko/skills.json";
+import koIssueTemplates from "./ko/issue-templates.json";
 import koChat from "./ko/chat.json";
 import koModals from "./ko/modals.json";
 import koRuntimes from "./ko/runtimes.json";
@@ -155,6 +156,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: koProjects,
     autopilots: koAutopilots,
     skills: koSkills,
+    "issue-templates": koIssueTemplates,
     chat: koChat,
     modals: koModals,
     runtimes: koRuntimes,
