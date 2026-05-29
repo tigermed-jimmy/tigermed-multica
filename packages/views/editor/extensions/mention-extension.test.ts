@@ -122,4 +122,12 @@ describe("mention tokenizer", () => {
     expect(token).toBeDefined();
     expect(token!.attributes.label).toBe("foo\\[bar");
   });
+
+  it("finds an issue mention nested inside task list Markdown", () => {
+    const token = tokenize("- [ ] [MUL-123](mention://issue/aaa-bbb)");
+    expect(token).toBeDefined();
+    expect(token!.attributes.label).toBe("MUL-123");
+    expect(token!.attributes.type).toBe("issue");
+    expect(token!.attributes.id).toBe("aaa-bbb");
+  });
 });
