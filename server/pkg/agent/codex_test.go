@@ -603,6 +603,88 @@ func TestCodexRawItemFileChangeAggregatesOutputDelta(t *testing.T) {
 	}
 }
 
+func TestCodexRawAgentMessageStreamsDeltasNoDuplication(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := newTestCodexClient(t)
+	c.notificationProtocol = "raw"
+
+	var messages []Message
+	c.onMessage = func(msg Message) {
+		messages = append(messages, msg)
+	}
+
+	// Codex streams the assistant reply as deltas, then sends item/completed
+	// carrying the full text. The deltas must reach the transcript live, and
+	// completion must not re-emit the already-streamed text.
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"item":{"type":"agentMessage","id":"msg-1"},"delta":"Hello "}}`)
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"item":{"type":"agentMessage","id":"msg-1"},"delta":"world"}}`)
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","id":"msg-1","text":"Hello world"}}}`)
+
+	if len(messages) != 2 {
+		t.Fatalf("expected 2 streamed text messages, got %d: %+v", len(messages), messages)
+	}
+	for i, m := range messages {
+		if m.Type != MessageText {
+			t.Fatalf("message %d: expected MessageText, got %q", i, m.Type)
+		}
+	}
+	if got := messages[0].Content + messages[1].Content; got != "Hello world" {
+		t.Fatalf("streamed text concatenation = %q, want %q", got, "Hello world")
+	}
+}
+
+func TestCodexRawAgentMessageCompletionEmitsUnstreamedRemainder(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := newTestCodexClient(t)
+	c.notificationProtocol = "raw"
+
+	var messages []Message
+	c.onMessage = func(msg Message) {
+		messages = append(messages, msg)
+	}
+
+	// Only a prefix streamed as a delta; completion carries the full text.
+	// The completion handler emits just the unstreamed tail so the final
+	// transcript reads "Hello world" exactly once.
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"item":{"type":"agentMessage","id":"msg-1"},"delta":"Hello "}}`)
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","id":"msg-1","text":"Hello world"}}}`)
+
+	if len(messages) != 2 {
+		t.Fatalf("expected 2 text messages, got %d: %+v", len(messages), messages)
+	}
+	if messages[0].Content != "Hello " {
+		t.Fatalf("first message = %q, want %q", messages[0].Content, "Hello ")
+	}
+	if messages[1].Content != "world" {
+		t.Fatalf("remainder message = %q, want %q", messages[1].Content, "world")
+	}
+}
+
+func TestCodexRawAgentMessageCompletionWithoutDeltasEmitsFullText(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := newTestCodexClient(t)
+	c.notificationProtocol = "raw"
+
+	var messages []Message
+	c.onMessage = func(msg Message) {
+		messages = append(messages, msg)
+	}
+
+	// No deltas streamed (short reply, or a backend that doesn't stream):
+	// completion must still emit the full text so output is unchanged.
+	c.handleLine(`{"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","id":"msg-1","text":"Done"}}}`)
+
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 text message, got %d: %+v", len(messages), messages)
+	}
+	if messages[0].Type != MessageText || messages[0].Content != "Done" {
+		t.Fatalf("unexpected message: %+v", messages[0])
+	}
+}
+
 func TestCodexRawTurnDiffEmitsFinalDiffOnTurnCompleted(t *testing.T) {
 	t.Parallel()
 
