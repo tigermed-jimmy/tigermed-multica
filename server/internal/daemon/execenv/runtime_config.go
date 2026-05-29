@@ -585,7 +585,11 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		} else {
 			b.WriteString("5. **Decide whether a reply is warranted.** If you produced actual work this turn (investigated, fixed, answered a real question), post the result via step 7 — that is a normal reply, not a noise comment. If the triggering comment was a pure acknowledgment / thanks / sign-off from another agent AND you produced no work this turn, do NOT post a reply — and do NOT post a comment saying 'No reply needed' or similar. Simply exit with no output. Silence is a valid and preferred way to end agent-to-agent conversations.\n")
 		}
-		b.WriteString("6. If a reply IS warranted: do any requested work first, then **decide whether to include any `@mention` link.** The default is NO mention. Only mention when you are escalating to a human owner who is not yet involved, delegating a concrete new sub-task to another agent for the first time, or the user explicitly asked you to loop someone in. Never @mention the agent you are replying to as a thank-you or sign-off.\n")
+		if len(ctx.AgentSkills) > 0 {
+			b.WriteString("6. If a reply IS warranted: do any requested work first — **if that work involves writing, modifying, or reviewing code, complete the Skills protocol in the `## Skills` section below before you start** (read the `SKILL.md` of every skill matching the task and comply with its required rules). Then **decide whether to include any `@mention` link.** The default is NO mention. Only mention when you are escalating to a human owner who is not yet involved, delegating a concrete new sub-task to another agent for the first time, or the user explicitly asked you to loop someone in. Never @mention the agent you are replying to as a thank-you or sign-off.\n")
+		} else {
+			b.WriteString("6. If a reply IS warranted: do any requested work first, then **decide whether to include any `@mention` link.** The default is NO mention. Only mention when you are escalating to a human owner who is not yet involved, delegating a concrete new sub-task to another agent for the first time, or the user explicitly asked you to loop someone in. Never @mention the agent you are replying to as a thank-you or sign-off.\n")
+		}
 		b.WriteString("7. **If you reply, post it as a comment — this step is mandatory when you reply.** Text in your terminal or run logs is NOT delivered to the user. ")
 		b.WriteString(BuildCommentReplyInstructions(provider, ctx.IssueID, ctx.TriggerCommentID))
 		b.WriteString("8. Before exiting: only if this run produced a fact that clears the high bar (important AND likely to be re-read by future runs on this same issue, e.g. a new PR URL or deploy URL), or you noticed a metadata key from entry that is now stale, pin or clear it via `multica issue metadata set`/`delete`. Most runs write nothing here — that is the expected outcome, not a gap. When in doubt, do not write. See the `## Issue Metadata` section above for the full bar.\n")
@@ -597,7 +601,11 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		fmt.Fprintf(&b, "2. Run `multica issue metadata list %s --output json` to see what prior agents pinned — best-effort, empty `{}` and CLI failures are normal. See the `## Issue Metadata` section above for what to look for.\n", ctx.IssueID)
 		fmt.Fprintf(&b, "3. Run `multica issue comment list %s --output json` to read the full comment history (returns all comments, capped server-side at 2000) — this is mandatory, not optional. Earlier comments often carry context the issue body lacks (e.g. which repo to work in, the prior agent's findings, the reason the issue was reassigned to you). Skipping this step is the most common cause of agents acting on stale or incomplete instructions. When the flat dump is too large to ingest in one shot, treat `--recent 20 --output json` plus the `--before` / `--before-id` cursor (from the stderr `Next thread cursor:` line) as a paging strategy: keep walking older threads until you have read enough history to satisfy this mandatory step. `--recent` is a way to read the full history page-by-page, not a shortcut that replaces it.\n", ctx.IssueID)
 		fmt.Fprintf(&b, "4. Run `multica issue status %s in_progress`\n", ctx.IssueID)
-		b.WriteString("5. Follow your Skills and Agent Identity to complete the task (write code, investigate, etc.)\n")
+		if len(ctx.AgentSkills) > 0 {
+			b.WriteString("5. **Before writing any code, complete the Skills protocol in the `## Skills` section below** — read the `SKILL.md` of every skill matching this task and comply with its required rules. Then follow your Agent Identity to complete the task (write code, investigate, etc.)\n")
+		} else {
+			b.WriteString("5. Follow your Agent Identity to complete the task (write code, investigate, etc.)\n")
+		}
 		if ctx.IsSquadLeader {
 			fmt.Fprintf(&b, "6. **Post your final results as a comment** (unless your outcome is `no_action` — in that case, calling `multica squad activity %s no_action --reason \"...\"` alone is sufficient; you MUST exit without posting any comment. DO NOT post a comment announcing no_action or saying you are exiting silently): `multica issue comment add %s --content \"...\"`. Your results are only visible to the user if posted via this CLI call; text in your terminal or run logs is NOT delivered.\n", ctx.IssueID, ctx.IssueID)
 		} else {
@@ -622,6 +630,19 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 
 	if len(ctx.AgentSkills) > 0 {
 		b.WriteString("## Skills\n\n")
+		// Forcing function (TIG-510): the runtime physically installs the
+		// skill files and may auto-discover them, but discovery alone does
+		// not make an agent read or apply them — standards skills get
+		// silently skipped (a unit test landed with zero Javadoc despite the
+		// backend skill requiring it). Provider-agnostic: harmless
+		// reinforcement for runtimes that surface skills natively, essential
+		// for those that demote a forcing-function skill to "just another
+		// auto-discovered file".
+		b.WriteString("**Discovery is not application.** The skills below are installed for you, but installing them does NOT apply them. Before you write or modify any code, move an issue to `in_review`, or post a code review, you MUST complete this protocol — it is mandatory, not optional:\n\n")
+		b.WriteString("1. Read each skill's description below.\n")
+		b.WriteString("2. For every skill whose description matches your task (even a loose match), open its `SKILL.md` and read it in full.\n")
+		b.WriteString("3. Follow the references that `SKILL.md` points to that are relevant to your change. For any code-writing or code-review task this ALWAYS includes the applicable coding-standards reference (comments/Javadoc, naming, etc.), not only the task-type-specific reference (e.g. unit-test).\n")
+		b.WriteString("4. Comply with every required rule the skill states — rules marked Mandatory, must/required language, Principles, and checklist items alike (skills label requirements differently; do not assume a `Mandatory:` tag). If one cannot be met, state which one and why in your result comment.\n\n")
 		switch provider {
 		case "claude":
 			// Claude discovers skills natively from .claude/skills/ — just list names.
@@ -644,7 +665,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 			b.WriteString("Detailed skill instructions are in `.agent_context/skills/`. Each subdirectory contains a `SKILL.md`.\n\n")
 		}
 		for _, skill := range ctx.AgentSkills {
-			fmt.Fprintf(&b, "- **%s**\n", skill.Name)
+			b.WriteString(renderSkillBullet(skill))
 		}
 		b.WriteString("\n")
 	}
