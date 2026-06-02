@@ -126,7 +126,6 @@ func TestUpdateIssueArchiveCancelsActiveTasks(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")
 	}
-	ctx := context.Background()
 	issueID := createTestIssue(t, "archive-cancel-single", "in_progress", "medium")
 	t.Cleanup(func() { deleteTestIssue(t, issueID) })
 
@@ -140,7 +139,7 @@ func TestUpdateIssueArchiveCancelsActiveTasks(t *testing.T) {
 		t.Fatalf("UpdateIssue archive: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	if got := taskStatus(t, ctx, taskID); got != "cancelled" {
+	if got := taskStatus(t, taskID); got != "cancelled" {
 		t.Fatalf("archive status should cancel active task, got %q", got)
 	}
 }
@@ -149,7 +148,6 @@ func TestBatchUpdateArchiveCancelsActiveTasks(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")
 	}
-	ctx := context.Background()
 	issueID := createTestIssue(t, "archive-cancel-batch", "in_progress", "medium")
 	t.Cleanup(func() { deleteTestIssue(t, issueID) })
 
@@ -173,7 +171,7 @@ func TestBatchUpdateArchiveCancelsActiveTasks(t *testing.T) {
 		t.Fatalf("expected updated=1, got %d", resp.Updated)
 	}
 
-	if got := taskStatus(t, ctx, taskID); got != "cancelled" {
+	if got := taskStatus(t, taskID); got != "cancelled" {
 		t.Fatalf("batch archive status should cancel active task, got %q", got)
 	}
 }
@@ -230,13 +228,4 @@ func createIssueTask(t *testing.T, issueID string, status string) string {
 	})
 
 	return taskID
-}
-
-func taskStatus(t *testing.T, ctx context.Context, taskID string) string {
-	t.Helper()
-	var status string
-	if err := testPool.QueryRow(ctx, `SELECT status FROM agent_task_queue WHERE id = $1`, taskID).Scan(&status); err != nil {
-		t.Fatalf("load task status: %v", err)
-	}
-	return status
 }

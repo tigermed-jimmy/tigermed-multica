@@ -60,7 +60,7 @@ import {
 } from "../../issues/components/pickers/property-picker";
 import { ChevronDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import type { Squad, SquadMember, SquadMemberStatus, Agent, CreateAgentRequest, MemberWithUser } from "@multica/core/types";
+import type { Squad, SquadMember, SquadMemberStatus, SquadMemberStatusValue, Agent, CreateAgentRequest, MemberWithUser } from "@multica/core/types";
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 
@@ -214,6 +214,8 @@ export function SquadDetailPage() {
   const availableAgents = agents.filter((a: Agent) => !a.archived_at && !members.some((m) => m.member_type === "agent" && m.member_id === a.id));
   const availableMembers = wsMembers.filter((m) => !members.some((sm) => sm.member_type === "member" && sm.member_id === m.user_id));
   const isLeader = (m: SquadMember) => m.member_type === "agent" && squad.leader_id === m.member_id;
+  const isArchived = (m: SquadMember) =>
+    m.member_type === "agent" && !!agents.find((a: Agent) => a.id === m.member_id)?.archived_at;
 
   const initials = squad.name
     .split(" ")
@@ -262,6 +264,7 @@ export function SquadDetailPage() {
           members={members}
           memberStatusById={memberStatusById}
           isLeader={isLeader}
+          isArchived={isArchived}
           getEntityName={getEntityName}
           onAddMemberClick={canManageSquad ? () => setShowAddMember(true) : undefined}
           onCreateAgentClick={isWorkspaceAdmin ? () => setShowCreateAgent(true) : undefined}
@@ -1049,6 +1052,7 @@ function SquadOverviewPane({
   members,
   memberStatusById,
   isLeader,
+  isArchived,
   getEntityName,
   onAddMemberClick,
   onCreateAgentClick,
@@ -1062,6 +1066,7 @@ function SquadOverviewPane({
   members: SquadMember[];
   memberStatusById: Map<string, SquadMemberStatus>;
   isLeader: (m: SquadMember) => boolean;
+  isArchived: (m: SquadMember) => boolean;
   getEntityName: (type: string, id: string) => string;
   onAddMemberClick?: () => void;
   // Optional — only passed when the current user can manage the squad
@@ -1120,6 +1125,7 @@ function SquadOverviewPane({
               members={members}
               memberStatusById={memberStatusById}
               isLeader={isLeader}
+              isArchived={isArchived}
               getEntityName={getEntityName}
               onAddMemberClick={onAddMemberClick}
               onCreateAgentClick={onCreateAgentClick}
@@ -1163,17 +1169,18 @@ function SquadOverviewPane({
   );
 }
 
-// Visual config for the four squad member status buckets. Mirrors
+// Visual config for the five squad member status buckets. Mirrors
 // availabilityConfig + workloadConfig in packages/views/agents/presence.ts —
 // same semantic tokens so a status dot here matches the agent page's dot.
 // Unknown / null statuses (human members, server-side enum drift) render as
 // a neutral muted pill; this is the "downgrade, don't crash" defense from
 // CLAUDE.md > API Response Compatibility.
-const SQUAD_STATUS_DOT_CLASS: Record<"working" | "idle" | "offline" | "unstable", string> = {
+const SQUAD_STATUS_DOT_CLASS: Record<SquadMemberStatusValue, string> = {
   working: "bg-success",
   idle: "bg-muted-foreground/40",
   offline: "bg-muted-foreground/40",
   unstable: "bg-warning",
+  archived: "bg-muted-foreground/40",
 };
 
 // Members tab body — re-uses the existing list/role editing patterns.
@@ -1181,6 +1188,7 @@ function SquadMembersTab({
   members,
   memberStatusById,
   isLeader,
+  isArchived,
   getEntityName,
   onAddMemberClick,
   onCreateAgentClick,
@@ -1192,6 +1200,7 @@ function SquadMembersTab({
   members: SquadMember[];
   memberStatusById: Map<string, SquadMemberStatus>;
   isLeader: (m: SquadMember) => boolean;
+  isArchived: (m: SquadMember) => boolean;
   getEntityName: (type: string, id: string) => string;
   onAddMemberClick?: () => void;
   // Hidden for non-admins — see SquadOverviewPane.
@@ -1242,6 +1251,7 @@ function SquadMembersTab({
               : statusValue === "idle" ? t(($) => $.members_tab.status_idle)
               : statusValue === "offline" ? t(($) => $.members_tab.status_offline)
               : statusValue === "unstable" ? t(($) => $.members_tab.status_unstable)
+              : statusValue === "archived" ? t(($) => $.members_tab.status_archived)
               : null;
           const activeIssues = status?.active_issues ?? [];
           const primaryIssue = activeIssues[0];
@@ -1334,7 +1344,10 @@ function SquadMembersTab({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {onSetLeader && m.member_type === "agent" && !isLeader(m) && (
+              {onSetLeader &&
+                m.member_type === "agent" &&
+                !isLeader(m) &&
+                !isArchived(m) && (
                 <Tooltip>
                   <TooltipTrigger
                     render={
