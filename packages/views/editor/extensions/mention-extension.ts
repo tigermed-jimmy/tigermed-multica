@@ -9,7 +9,7 @@ export const BaseMentionExtension = Mention.extend({
   },
   renderHTML({ node, HTMLAttributes }) {
     const type = node.attrs.type ?? "member";
-    const prefix = type === "issue" ? "" : "@";
+    const prefix = type === "issue" || type === "project" ? "" : "@";
     return [
       "span",
       mergeAttributes(
@@ -80,7 +80,7 @@ export const BaseMentionExtension = Mention.extend({
   },
   renderMarkdown: (node: any) => {
     const { id, label, type = "member" } = node.attrs || {};
-    const prefix = type === "issue" ? "" : "@";
+    const prefix = type === "issue" || type === "project" ? "" : "@";
     // Escape `\`, `[`, `]` in the label so the markdown link syntax is not
     // broken when the name contains them (e.g. "David[TF]" or "Ops\Bot").
     // Mirrors the backend's util.EscapeMentionLabel — `\` must be escaped

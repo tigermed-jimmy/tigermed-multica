@@ -35,6 +35,7 @@ import type { Attachment } from "@multica/core/types";
 import { useNavigation } from "../navigation";
 import { IssueMentionCard } from "../issues/components/issue-mention-card";
 import { EntityMentionName, type EntityMentionType } from "./mention-name";
+import { ProjectChip } from "../projects/components/project-chip";
 import { useLinkHover, LinkHoverCard } from "./link-hover-card";
 import { openLink, isMentionHref } from "./utils/link-handler";
 import { isAllowedFileCardHref } from "@multica/ui/markdown";
@@ -132,6 +133,30 @@ function IssueMentionLink({ issueId, label }: { issueId: string; label?: string 
   );
 }
 
+function ProjectMentionLink({ projectId, label }: { projectId: string; label?: string }) {
+  const { push, openInNewTab } = useNavigation();
+  const p = useWorkspacePaths();
+  const path = p.projectDetail(projectId);
+  return (
+    <span
+      className="inline align-middle"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          if (openInNewTab) {
+            openInNewTab(path, label);
+          }
+          return;
+        }
+        push(path);
+      }}
+    >
+      <ProjectChip projectId={projectId} fallbackLabel={label} className="cursor-pointer hover:bg-accent transition-colors" />
+    </span>
+  );
+}
+
 // Named component so it can call useWorkspaceSlug() — arrow function inlined
 // inside `components` below would still work, but extracting it keeps the
 // hook usage explicit and avoids hook-in-object-literal surprises.
@@ -149,7 +174,9 @@ function ReadonlyLink({
   }
 
   if (isMentionHref(href)) {
-    const match = href.match(/^mention:\/\/(member|agent|squad|issue|all)\/(.+)$/);
+    const match = href.match(
+      /^mention:\/\/(member|agent|squad|issue|project|all)\/(.+)$/,
+    );
     const label =
       typeof children === "string"
         ? children
@@ -177,6 +204,9 @@ function ReadonlyLink({
           />
         </span>
       );
+    }
+    if (match?.[1] === "project" && match[2]) {
+      return <ProjectMentionLink projectId={match[2]} label={label} />;
     }
     // @all and any other shape: keep the literal markdown text.
     return <span className="mention">{children}</span>;
