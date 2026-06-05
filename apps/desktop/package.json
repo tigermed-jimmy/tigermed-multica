@@ -7,7 +7,7 @@
   "homepage": "https://multica.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/furtherref/multica.git",
+    "url": "https://github.com/tigermed-jimmy/tigermed-multica.git",
     "directory": "apps/desktop"
   },
   "author": {
@@ -22,13 +22,13 @@
     "dev": "pnpm run bundle-cli && pnpm run brand-dev-electron && electron-vite dev",
     "dev:staging": "pnpm run bundle-cli && pnpm run brand-dev-electron && electron-vite dev --mode staging",
     "build": "pnpm run bundle-cli && electron-vite build",
-    "build:furtherref": "pnpm run bundle-cli && electron-vite build --mode furtherref",
+    "build:tigermed": "pnpm run bundle-cli && electron-vite build --mode tigermed",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
     "preview": "electron-vite preview",
     "package": "node scripts/package.mjs",
-    "package:furtherref": "node scripts/package.mjs --mode furtherref",
+    "package:tigermed": "node scripts/package.mjs --mode tigermed",
     "package:all": "node scripts/package.mjs --all-platforms --publish never",
     "lint": "eslint .",
     "test": "vitest run",

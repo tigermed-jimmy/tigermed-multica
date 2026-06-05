@@ -1,4 +1,4 @@
-appId: com.furtherref.multica
+appId: com.tigermed.multica
 productName: Multica
 directories:
   buildResources: build
@@ -94,8 +94,8 @@ win:
   artifactName: multica-desktop-${version}-windows-${arch}.${ext}
 publish:
   provider: github
-  owner: furtherref
-  repo: multica
+  owner: tigermed-jimmy
+  repo: tigermed-multica
   # Align with our CLI release flow which pre-creates a *published* GitHub
   # Release via `gh release create`. The electron-builder default of
   # `releaseType: draft` conflicts with `existingType=release` and causes

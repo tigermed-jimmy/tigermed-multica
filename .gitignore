@@ -23,7 +23,7 @@ dist-electron
 # Desktop production config is public (backend URL, etc.) — track it so
 # `pnpm package` produces a release-ready build without extra setup.
 !apps/desktop/.env.production
-!apps/desktop/.env.furtherref
+!apps/desktop/.env.tigermed
 # Mobile staging config is public (staging API URL) — track it so a fresh
 # checkout can run `pnpm dev:mobile:staging` / `ios:mobile*:staging` without
 # the user having to copy `.env.example` first.

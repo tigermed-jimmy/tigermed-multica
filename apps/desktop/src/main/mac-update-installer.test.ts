@@ -80,7 +80,7 @@ describe("buildMacInstallScript", () => {
 
 describe("FURTHERREF_BUNDLE_ID", () => {
   it("uses the FurtherRef bundle identifier", () => {
-    expect(FURTHERREF_BUNDLE_ID).toBe("com.furtherref.multica");
+    expect(FURTHERREF_BUNDLE_ID).toBe("com.tigermed.multica");
   });
 });
 

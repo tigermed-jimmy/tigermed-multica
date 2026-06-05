@@ -103,15 +103,15 @@ describe("parsePackageArgs", () => {
   });
 
   it("consumes the vite mode without forwarding it to electron-builder", () => {
-    expect(parsePackageArgs(["--mode", "furtherref", "--mac", "--arm64"])).toEqual({
+    expect(parsePackageArgs(["--mode", "tigermed", "--mac", "--arm64"])).toEqual({
       allPlatforms: false,
-      viteMode: "furtherref",
+      viteMode: "tigermed",
       sharedArgs: [],
       platformTargets: { mac: [], win: [], linux: [] },
       requestedPlatforms: ["mac"],
       requestedArchs: ["arm64"],
     });
-    expect(parsePackageArgs(["--mode=furtherref"]).viteMode).toBe("furtherref");
+    expect(parsePackageArgs(["--mode=tigermed"]).viteMode).toBe("tigermed");
   });
 });
 

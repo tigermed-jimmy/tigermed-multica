@@ -5,7 +5,7 @@ import { tmpdir } from "os";
 import { basename, dirname, join, sep } from "path";
 import { promisify } from "util";
 
-export const FURTHERREF_BUNDLE_ID = "com.furtherref.multica";
+export const FURTHERREF_BUNDLE_ID = "com.tigermed.multica";
 
 const execFileAsync = promisify(execFile);
 
