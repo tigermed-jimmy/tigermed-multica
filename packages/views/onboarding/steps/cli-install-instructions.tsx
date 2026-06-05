@@ -8,7 +8,7 @@ import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
 
 const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/furtherref/multica/main/scripts/install.sh | bash";
+  "curl -fsSL https://raw.githubusercontent.com/tigermed-jimmy/tigermed-multica/main/scripts/install.sh | bash";
 const SETUP_CMD = "multica setup";
 
 function CopyButton({ text }: { text: string }) {

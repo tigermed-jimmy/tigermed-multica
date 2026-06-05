@@ -16,7 +16,7 @@ import type { LatestRelease } from "@/features/landing/utils/github-release";
 import { captureDownloadPageViewed } from "@multica/core/analytics";
 
 const ALL_RELEASES_URL =
-  "https://github.com/furtherref/multica/releases";
+  "https://github.com/tigermed-jimmy/tigermed-multica/releases";
 
 export function DownloadClient({ release }: { release: LatestRelease }) {
   const [detected, setDetected] = useState<DetectResult | null>(null);

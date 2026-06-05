@@ -57,7 +57,7 @@ jobs:
   release:
     needs: verify
     # Only run on the configured release repo.
-    if: github.repository_owner == 'furtherref'
+    if: github.repository_owner == 'tigermed-jimmy'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -526,4 +526,4 @@ jobs:
           # Developer / Windows signing credentials into repo secrets later
           # to produce fully signed and notarized installers.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: node scripts/package.mjs --mode furtherref --${{ matrix.target }} --x64 --arm64 --publish always
+        run: node scripts/package.mjs --mode tigermed --${{ matrix.target }} --x64 --arm64 --publish always

@@ -57,7 +57,7 @@ changelog:
       - "^chore:"
 
 # Homebrew tap publishing is intentionally disabled for the FurtherRef fork.
-# Re-enable this block when a `furtherref/homebrew-tap` repository and a
+# Re-enable this block when a `tigermed-jimmy/homebrew-tap` repository and a
 # `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret are available.
 #
 # brews:
@@ -65,11 +65,11 @@ changelog:
 #     ids:
 #       - versioned
 #     repository:
-#       owner: furtherref
+#       owner: tigermed-jimmy
 #       name: homebrew-tap
 #       branch: main
 #     directory: Formula
-#     homepage: "https://github.com/furtherref/multica"
+#     homepage: "https://github.com/tigermed-jimmy/tigermed-multica"
 #     description: "Multica CLI — local agent runtime and management tool for the Multica platform"
 #     license: "Apache-2.0"
 #     install: |

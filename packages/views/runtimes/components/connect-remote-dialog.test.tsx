@@ -72,10 +72,10 @@ describe("ConnectRemoteDialog", () => {
     expect(baseElement).toHaveTextContent("multica setup");
     expect(baseElement).not.toHaveTextContent("multica setup self-host");
     expect(baseElement).toHaveTextContent(
-      "multica config set server_url https://multica.furtherref.com",
+      "multica config set server_url https://aicoding.tigermed.net",
     );
     expect(baseElement).toHaveTextContent(
-      "multica config set app_url https://multica.furtherref.com",
+      "multica config set app_url https://aicoding.tigermed.net",
     );
   });
 

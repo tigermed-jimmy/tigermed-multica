@@ -7,13 +7,13 @@ The `multica` CLI connects your local machine to Multica. It handles authenticat
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew install furtherref/tap/multica
+brew install tigermed-jimmy/tap/multica
 ```
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/furtherref/multica.git
+git clone https://github.com/tigermed-jimmy/tigermed-multica.git
 cd multica
 make build
 cp server/bin/multica /usr/local/bin/multica
@@ -22,7 +22,7 @@ cp server/bin/multica /usr/local/bin/multica
 ### Update
 
 ```bash
-brew upgrade furtherref/tap/multica
+brew upgrade tigermed-jimmy/tap/multica
 ```
 
 For install script or manual installs, use:
