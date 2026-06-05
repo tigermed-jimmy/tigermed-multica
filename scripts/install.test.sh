@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fork-specific installer test: Homebrew is disabled in install.sh until the
-# furtherref formula is published, so the script always goes through the
+# tigermed-jimmy formula is published, so the script always goes through the
 # GitHub Releases binary path. This test exercises that single path end to end.
 set -euo pipefail
 
@@ -25,7 +25,7 @@ STUB
   cat >"$stub_bin/curl" <<'STUB'
 #!/usr/bin/env bash
 if [[ "$*" == *"-sI"* ]]; then
-  printf 'HTTP/2 302\r\nlocation: https://github.com/furtherref/multica/releases/tag/v0.3.2\r\n'
+  printf 'HTTP/2 302\r\nlocation: https://github.com/tigermed-jimmy/tigermed-multica/releases/tag/v0.3.2\r\n'
   exit 0
 fi
 
