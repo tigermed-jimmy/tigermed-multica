@@ -36,11 +36,11 @@ describe("HelpLauncher", () => {
 
     expect(screen.getByRole("link", { name: /docs/i })).toHaveAttribute(
       "href",
-      "https://aicoding.tigermed.net/docs",
+      "https://code.tigermed.net/docs",
     );
     expect(screen.getByRole("link", { name: /change log/i })).toHaveAttribute(
       "href",
-      "https://aicoding.tigermed.net/changelog",
+      "https://code.tigermed.net/changelog",
     );
   });
 });

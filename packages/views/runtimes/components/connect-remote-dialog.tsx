@@ -26,8 +26,8 @@ type Step = "instructions" | "success";
 
 const INSTALL_CMD =
   "curl -fsSL https://raw.githubusercontent.com/tigermed-jimmy/tigermed-multica/main/scripts/install.sh | bash";
-const CLOUD_SERVER_URL = "https://aicoding.tigermed.net";
-const CLOUD_APP_URL = "https://aicoding.tigermed.net";
+const CLOUD_SERVER_URL = "https://code.tigermed.net";
+const CLOUD_APP_URL = "https://code.tigermed.net";
 
 function normalizeCommandURL(url: string | undefined) {
   return url?.trim().replace(/\/+$/, "") ?? "";

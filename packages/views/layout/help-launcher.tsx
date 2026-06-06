@@ -10,8 +10,8 @@ import {
 import { useModalStore } from "@multica/core/modals";
 import { useT } from "../i18n";
 
-const DOCS_URL = "https://aicoding.tigermed.net/docs";
-const CHANGELOG_URL = "https://aicoding.tigermed.net/changelog";
+const DOCS_URL = "https://code.tigermed.net/docs";
+const CHANGELOG_URL = "https://code.tigermed.net/changelog";
 
 export function HelpLauncher() {
   const { t } = useT("layout");
