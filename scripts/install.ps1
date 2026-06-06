@@ -466,7 +466,7 @@ function Start-DefaultInstall {
     Write-Host ""
     Write-Host "  Next: configure your environment"
     Write-Host ""
-    Write-Host "     multica setup               " -NoNewline; Write-Host "# Connect to https://aicoding.tigermed.net" -ForegroundColor DarkGray
+    Write-Host "     multica setup               " -NoNewline; Write-Host "# Connect to https://code.tigermed.net" -ForegroundColor DarkGray
     # Write-Host "     multica setup self-host      " -NoNewline; Write-Host "# Connect to a self-hosted server" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Self-hosting? Install the server first:"

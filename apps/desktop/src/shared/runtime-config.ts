@@ -15,9 +15,9 @@ export type RuntimeConfigResult =
 
 export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = Object.freeze({
   schemaVersion: 1,
-  apiUrl: "https://aicoding.tigermed.net",
-  wsUrl: "wss://aicoding.tigermed.net/ws",
-  appUrl: "https://aicoding.tigermed.net",
+  apiUrl: "https://code.tigermed.net",
+  wsUrl: "wss://code.tigermed.net/ws",
+  appUrl: "https://code.tigermed.net",
 });
 
 const LOCAL_DEV_RUNTIME_CONFIG: RuntimeConfig = Object.freeze({

@@ -19,7 +19,7 @@ import (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Configure the CLI, authenticate, and start the daemon",
-	Long: `Configures the CLI to connect to https://aicoding.tigermed.net, then
+	Long: `Configures the CLI to connect to https://code.tigermed.net, then
 authenticates via browser and starts the agent daemon.
 
 If a configuration already exists, you will be prompted before overwriting.
@@ -33,8 +33,8 @@ Use --profile to create an isolated configuration for a separate environment:
 
 var setupCloudCmd = &cobra.Command{
 	Use:   "cloud",
-	Short: "Configure the CLI for https://aicoding.tigermed.net",
-	Long: `Explicitly configures the CLI to connect to https://aicoding.tigermed.net.
+	Short: "Configure the CLI for https://code.tigermed.net",
+	Long: `Explicitly configures the CLI to connect to https://code.tigermed.net.
 
 This is equivalent to running 'multica setup' without a subcommand.`,
 	RunE: runSetupCloud,
@@ -124,14 +124,14 @@ func runSetupCloud(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := cli.CLIConfig{
-		ServerURL: "https://aicoding.tigermed.net",
-		AppURL:    "https://aicoding.tigermed.net",
+		ServerURL: "https://code.tigermed.net",
+		AppURL:    "https://code.tigermed.net",
 	}
 	if err := cli.SaveCLIConfigForProfile(cfg, profile); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
 
-	fmt.Fprintln(os.Stderr, "Configured for https://aicoding.tigermed.net.")
+	fmt.Fprintln(os.Stderr, "Configured for https://code.tigermed.net.")
 	fmt.Fprintf(os.Stderr, "  server_url: %s\n", cfg.ServerURL)
 	fmt.Fprintf(os.Stderr, "  app_url:    %s\n", cfg.AppURL)
 	printConfigLocation(profile)

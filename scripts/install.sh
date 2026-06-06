@@ -423,7 +423,7 @@ run_default() {
   printf "\n"
   printf "  ${BOLD}Next: configure your environment${RESET}\n"
   printf "\n"
-  printf "     ${CYAN}multica setup${RESET}                # Connect to https://aicoding.tigermed.net\n"
+  printf "     ${CYAN}multica setup${RESET}                # Connect to https://code.tigermed.net\n"
   # printf "     ${CYAN}multica setup self-host${RESET}       # Connect to a self-hosted server\n"
   printf "\n"
   printf "  ${BOLD}Self-hosting?${RESET} Install the server first:\n"

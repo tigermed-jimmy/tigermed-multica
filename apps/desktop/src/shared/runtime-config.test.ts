@@ -10,9 +10,9 @@ describe("runtime config", () => {
   it("uses cloud defaults without a desktop.json file", () => {
     expect(DEFAULT_RUNTIME_CONFIG).toEqual({
       schemaVersion: 1,
-      apiUrl: "https://aicoding.tigermed.net",
-      wsUrl: "wss://aicoding.tigermed.net/ws",
-      appUrl: "https://aicoding.tigermed.net",
+      apiUrl: "https://code.tigermed.net",
+      wsUrl: "wss://code.tigermed.net/ws",
+      appUrl: "https://code.tigermed.net",
     });
   });
 
