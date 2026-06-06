@@ -14,7 +14,6 @@ function makeItem(
   return {
     id,
     workspace_id: wsId,
-    workspace_slug: "test",
     recipient_type: "member",
     recipient_id: "user-1",
     actor_type: null,

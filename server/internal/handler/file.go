@@ -72,14 +72,15 @@ type AttachmentResponse struct {
 
 func (h *Handler) attachmentToResponse(a db.Attachment) AttachmentResponse {
 	id := uuidToString(a.ID)
+	workspaceID := uuidToString(a.WorkspaceID)
 	resp := AttachmentResponse{
 		ID:           id,
-		WorkspaceID:  uuidToString(a.WorkspaceID),
+		WorkspaceID:  workspaceID,
 		UploaderType: a.UploaderType,
 		UploaderID:   uuidToString(a.UploaderID),
 		Filename:     a.Filename,
 		URL:          a.Url,
-		DownloadURL:  attachmentDownloadPath(id),
+		DownloadURL:  attachmentDownloadPath(id, workspaceID),
 		ContentType:  a.ContentType,
 		SizeBytes:    a.SizeBytes,
 		CreatedAt:    a.CreatedAt.Time.Format("2006-01-02T15:04:05Z07:00"),
@@ -106,8 +107,16 @@ func (h *Handler) attachmentToResponse(a db.Attachment) AttachmentResponse {
 	return resp
 }
 
-func attachmentDownloadPath(id string) string {
-	return "/api/attachments/" + id + "/download"
+// attachmentDownloadPath builds the server-relative URL for the unified
+// download endpoint. The endpoint sits behind RequireWorkspaceMember, but the
+// attachment preview loads this URL directly through a media element
+// (<img>/<iframe>/<video>/<audio>), which cannot send the X-Workspace-Slug
+// header the JS API client injects. The workspace identifier must therefore
+// travel in the URL itself, or the middleware rejects the bare navigation with
+// 400 "workspace_id or workspace_slug is required". CloudFront mode overwrites
+// download_url with an absolute signed URL and never calls this helper.
+func attachmentDownloadPath(id, workspaceID string) string {
+	return "/api/attachments/" + id + "/download?workspace_id=" + url.QueryEscape(workspaceID)
 }
 
 func normalizeAttachmentDownloadMode(raw string) (attachmentDownloadMode, bool) {

@@ -478,8 +478,63 @@ func TestAttachmentToResponse_NonCloudFrontUsesDownloadEndpoint(t *testing.T) {
 	if resp.URL != "http://rustfs:9000/test-bucket/private.txt" {
 		t.Fatalf("stored url changed: %q", resp.URL)
 	}
-	if resp.DownloadURL != "/api/attachments/"+id+"/download" {
-		t.Fatalf("download_url = %q, want unified endpoint", resp.DownloadURL)
+	// The download endpoint sits behind RequireWorkspaceMember, and the
+	// preview modal loads this URL directly through a media element
+	// (<img>/<iframe>/<video>/<audio>) that cannot send the X-Workspace-Slug
+	// header. The workspace identifier must therefore be embedded in the URL.
+	wantDownload := "/api/attachments/" + id + "/download?workspace_id=" + testWorkspaceID
+	if resp.DownloadURL != wantDownload {
+		t.Fatalf("download_url = %q, want %q", resp.DownloadURL, wantDownload)
+	}
+}
+
+// TestDownloadAttachment_MetadataURLBareNavigationPassesMiddleware reproduces
+// the attachment-preview path: a <img src={download_url}> load carries no
+// custom headers (only the session cookie → X-User-ID), so the workspace must
+// be resolvable from the metadata download_url alone. Without the embedded
+// workspace_id this returns 400 "workspace_id or workspace_slug is required".
+func TestDownloadAttachment_MetadataURLBareNavigationPassesMiddleware(t *testing.T) {
+	store := &mockStorage{}
+	origStorage := testHandler.Storage
+	origCfg := testHandler.cfg
+	origSigner := testHandler.CFSigner
+	testHandler.Storage = store
+	testHandler.cfg.AttachmentDownloadMode = "proxy"
+	testHandler.CFSigner = nil
+	t.Cleanup(func() {
+		testHandler.Storage = origStorage
+		testHandler.cfg = origCfg
+		testHandler.CFSigner = origSigner
+	})
+
+	key := "downloads/metadata-nav.txt"
+	body := []byte("metadata download body")
+	store.put(key, body)
+	id := seedAttachmentURL(t, "https://s3.example.com/test-bucket/"+key, "metadata-nav.txt", "text/plain", int64(len(body)))
+
+	att, err := testHandler.Queries.GetAttachment(context.Background(), db.GetAttachmentParams{
+		ID:          parseUUID(id),
+		WorkspaceID: parseUUID(testWorkspaceID),
+	})
+	if err != nil {
+		t.Fatalf("GetAttachment: %v", err)
+	}
+	downloadURL := testHandler.attachmentToResponse(att).DownloadURL
+
+	req := httptest.NewRequest("GET", downloadURL, nil)
+	req.Header.Set("X-User-ID", testUserID)
+	w := httptest.NewRecorder()
+
+	newDownloadRouter().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Body.String(); got != string(body) {
+		t.Fatalf("body = %q, want %q", got, body)
+	}
+	if req.Header.Get("X-Workspace-ID") != "" || req.Header.Get("X-Workspace-Slug") != "" {
+		t.Fatalf("metadata navigation test must not set custom workspace headers")
 	}
 }
 
