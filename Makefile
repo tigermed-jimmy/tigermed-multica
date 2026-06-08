@@ -58,12 +58,17 @@ selfhost: ## Create .env if needed, then pull and start the official self-hosted
 		echo "==> Creating .env from .env.example..."; \
 		cp .env.example .env; \
 		JWT=$$(openssl rand -hex 32); \
+		PGPASS=$$(openssl rand -hex 24); \
 		if [ "$$(uname)" = "Darwin" ]; then \
 			sed -i '' "s/^JWT_SECRET=.*/JWT_SECRET=$$JWT/" .env; \
+			sed -i '' "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$PGPASS/" .env; \
+			sed -i '' -E "s#^(DATABASE_URL=postgres://[^:]+:)[^@]*(@.*)#\1$$PGPASS\2#" .env; \
 		else \
 			sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$$JWT/" .env; \
+			sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$PGPASS/" .env; \
+			sed -i -E "s#^(DATABASE_URL=postgres://[^:]+:)[^@]*(@.*)#\1$$PGPASS\2#" .env; \
 		fi; \
-		echo "==> Generated random JWT_SECRET"; \
+		echo "==> Generated random JWT_SECRET and POSTGRES_PASSWORD"; \
 	fi
 	@echo "==> Pulling official Multica images..."
 	@if ! docker compose -f docker-compose.selfhost.yml pull; then \
@@ -109,12 +114,17 @@ selfhost-build: ## Build backend/web/docs from the current checkout and start th
 		echo "==> Creating .env from .env.example..."; \
 		cp .env.example .env; \
 		JWT=$$(openssl rand -hex 32); \
+		PGPASS=$$(openssl rand -hex 24); \
 		if [ "$$(uname)" = "Darwin" ]; then \
 			sed -i '' "s/^JWT_SECRET=.*/JWT_SECRET=$$JWT/" .env; \
+			sed -i '' "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$PGPASS/" .env; \
+			sed -i '' -E "s#^(DATABASE_URL=postgres://[^:]+:)[^@]*(@.*)#\1$$PGPASS\2#" .env; \
 		else \
 			sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$$JWT/" .env; \
+			sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$PGPASS/" .env; \
+			sed -i -E "s#^(DATABASE_URL=postgres://[^:]+:)[^@]*(@.*)#\1$$PGPASS\2#" .env; \
 		fi; \
-		echo "==> Generated random JWT_SECRET"; \
+		echo "==> Generated random JWT_SECRET and POSTGRES_PASSWORD"; \
 	fi
 	@echo "==> Building Multica from the current checkout..."
 	docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build

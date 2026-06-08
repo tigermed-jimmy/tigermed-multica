@@ -302,6 +302,7 @@
     "filter_active_label": "작업 중인 에이전트만 보는 중"
   },
   "agent_live": {
+    "is_working": "{{name}} 작업 중",
     "is_queued": "{{name}} 대기 중",
     "is_waiting_local_directory": "{{name}} 로컬 디렉터리 대기 중",
     "queued_elapsed_prefix": "{{elapsed}} 동안 대기 중",

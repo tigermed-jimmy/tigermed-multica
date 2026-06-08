@@ -1,5 +1,5 @@
-import { autoUpdater, UpdateDownloadedEvent } from "electron-updater";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { autoUpdater, type UpdateDownloadedEvent } from "electron-updater";
+import { app, type BrowserWindow, ipcMain } from "electron";
 import {
   customInstallMacApp,
   scheduleMacFallbackInstall,
@@ -48,6 +48,32 @@ export type ManualUpdateCheckResult =
     }
   | { ok: false; error: string };
 
+type RendererChannel =
+  | "updater:update-available"
+  | "updater:download-progress"
+  | "updater:update-downloaded";
+
+function isDestroyedObjectError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("Object has been destroyed");
+}
+
+function sendToLiveRenderer(
+  win: BrowserWindow | null,
+  channel: RendererChannel,
+  payload: unknown,
+): void {
+  if (!win || win.isDestroyed()) return;
+
+  try {
+    const { webContents } = win;
+    if (webContents.isDestroyed()) return;
+    webContents.send(channel, payload);
+  } catch (err) {
+    if (isDestroyedObjectError(err)) return;
+    throw err;
+  }
+}
+
 // Single-flight guard around checkForUpdates(). With autoDownload=true the
 // startup, periodic, and manual triggers can all kick off downloads, and
 // overlapping calls have caused duplicate download warnings in the past
@@ -88,8 +114,7 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
     });
     // Forwarded for renderer-side state tracking only; the notification UI
     // does not render an "available" affordance with autoDownload=true.
-    const win = getMainWindow();
-    win?.webContents.send("updater:update-available", {
+    sendToLiveRenderer(getMainWindow(), "updater:update-available", {
       version: info.version,
       releaseNotes: info.releaseNotes,
     });
@@ -99,8 +124,7 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
     logUpdater("download progress", {
       percent: Math.round(progress.percent),
     });
-    const win = getMainWindow();
-    win?.webContents.send("updater:download-progress", {
+    sendToLiveRenderer(getMainWindow(), "updater:download-progress", {
       percent: progress.percent,
     });
   });
@@ -112,8 +136,7 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
       version: info.version,
       downloadedFile: latestDownloadedFile,
     });
-    const win = getMainWindow();
-    win?.webContents.send("updater:update-downloaded", {
+    sendToLiveRenderer(getMainWindow(), "updater:update-downloaded", {
       version: info.version,
       releaseNotes: info.releaseNotes,
     });
