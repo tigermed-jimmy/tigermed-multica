@@ -23,9 +23,15 @@ ORDER BY created_at ASC;
 SELECT * FROM attachment
 WHERE id = $1 AND workspace_id = $2;
 
--- name: GetAttachmentByURL :one
+-- name: GetAttachmentByIDOnly :one
+-- Used by the download endpoint, which derives workspace context from the
+-- attachment row itself rather than from request headers/query params. The
+-- caller still has to verify the requester is a member of the returned
+-- workspace_id before serving the bytes — this query is access-neutral on
+-- purpose so a self-contained URL like /api/attachments/{id}/download can
+-- work as a native <img>/<video> resource load (no header attachment).
 SELECT * FROM attachment
-WHERE workspace_id = $1 AND (url = $2 OR $2 LIKE url || '?%');
+WHERE id = $1;
 
 -- name: ListAttachmentsByCommentIDs :many
 SELECT * FROM attachment

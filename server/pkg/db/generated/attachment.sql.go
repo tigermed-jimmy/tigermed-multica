@@ -115,18 +115,19 @@ func (q *Queries) GetAttachment(ctx context.Context, arg GetAttachmentParams) (A
 	return i, err
 }
 
-const getAttachmentByURL = `-- name: GetAttachmentByURL :one
+const getAttachmentByIDOnly = `-- name: GetAttachmentByIDOnly :one
 SELECT id, workspace_id, issue_id, comment_id, uploader_type, uploader_id, filename, url, content_type, size_bytes, created_at, chat_session_id, chat_message_id FROM attachment
-WHERE workspace_id = $1 AND (url = $2 OR $2 LIKE url || '?%')
+WHERE id = $1
 `
 
-type GetAttachmentByURLParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	Url         string      `json:"url"`
-}
-
-func (q *Queries) GetAttachmentByURL(ctx context.Context, arg GetAttachmentByURLParams) (Attachment, error) {
-	row := q.db.QueryRow(ctx, getAttachmentByURL, arg.WorkspaceID, arg.Url)
+// Used by the download endpoint, which derives workspace context from the
+// attachment row itself rather than from request headers/query params. The
+// caller still has to verify the requester is a member of the returned
+// workspace_id before serving the bytes — this query is access-neutral on
+// purpose so a self-contained URL like /api/attachments/{id}/download can
+// work as a native <img>/<video> resource load (no header attachment).
+func (q *Queries) GetAttachmentByIDOnly(ctx context.Context, id pgtype.UUID) (Attachment, error) {
+	row := q.db.QueryRow(ctx, getAttachmentByIDOnly, id)
 	var i Attachment
 	err := row.Scan(
 		&i.ID,

@@ -154,7 +154,7 @@ func TestEnqueueMentionedAgentTasks_SquadAssignedAgentAuthor_DropsOutsider(t *te
 		t.Fatalf("before: expected 0 tasks for outsider, got %d", got)
 	}
 
-	testHandler.enqueueMentionedAgentTasks(ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
+	enqueueMentionedAgentTasksForTest(t, ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
 
 	if got := countQueuedOrDispatched(t, fx.OutsiderID, fx.IssueID); got != 0 {
 		t.Fatalf("cross-squad @mention from squad-leader agent author MUST be dropped, got %d task(s) for outsider", got)
@@ -179,7 +179,7 @@ func TestEnqueueMentionedAgentTasks_SquadAssignedAgentAuthor_EnqueuesMember(t *t
 		t.Fatalf("before: expected 0 tasks for worker, got %d", got)
 	}
 
-	testHandler.enqueueMentionedAgentTasks(ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
+	enqueueMentionedAgentTasksForTest(t, ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
 
 	if got := countQueuedOrDispatched(t, fx.WorkerID, fx.IssueID); got != 1 {
 		t.Fatalf("in-squad @mention from squad-leader agent author MUST be enqueued, got %d task(s) for worker", got)
@@ -220,7 +220,7 @@ func TestEnqueueMentionedAgentTasks_SquadAssignedAgentAuthor_AllowsLeaderFallbac
 		t.Fatalf("before: expected 0 tasks for leader, got %d", got)
 	}
 
-	testHandler.enqueueMentionedAgentTasks(ctx, fx.Issue, comment, nil, "agent", fx.WorkerID)
+	enqueueMentionedAgentTasksForTest(t, ctx, fx.Issue, comment, nil, "agent", fx.WorkerID)
 
 	if got := countQueuedOrDispatched(t, fx.LeaderID, fx.IssueID); got != 1 {
 		t.Fatalf("agent → leader @mention MUST be enqueued via leader fallback, got %d task(s) for leader", got)
@@ -244,7 +244,7 @@ func TestEnqueueMentionedAgentTasks_SquadAssignedAgentAuthor_MixedMentions(t *te
 		"[@Outsider](mention://agent/" + fx.OutsiderID + ") please own the frontend"
 	comment := insertCrossSquadComment(t, fx.IssueID, "agent", fx.LeaderID, content)
 
-	testHandler.enqueueMentionedAgentTasks(ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
+	enqueueMentionedAgentTasksForTest(t, ctx, fx.Issue, comment, nil, "agent", fx.LeaderID)
 
 	if got := countQueuedOrDispatched(t, fx.WorkerID, fx.IssueID); got != 1 {
 		t.Errorf("squad worker mention should enqueue, got %d task(s) for worker", got)
@@ -273,7 +273,7 @@ func TestEnqueueMentionedAgentTasks_SquadAssignedMemberAuthor_BypassesGate(t *te
 		t.Fatalf("before: expected 0 tasks for outsider, got %d", got)
 	}
 
-	testHandler.enqueueMentionedAgentTasks(ctx, fx.Issue, comment, nil, "member", testUserID)
+	enqueueMentionedAgentTasksForTest(t, ctx, fx.Issue, comment, nil, "member", testUserID)
 
 	if got := countQueuedOrDispatched(t, fx.OutsiderID, fx.IssueID); got != 1 {
 		t.Fatalf("member-authored @mention MUST bypass the cross-squad gate, got %d task(s) for outsider", got)
