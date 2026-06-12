@@ -177,7 +177,7 @@ func InjectRuntimeConfig(workDir, provider string, ctx TaskContextForEnv) (strin
 // added to one side cannot drift past the other.
 func runtimeConfigPath(workDir, provider string) string {
 	switch provider {
-	case "claude":
+	case "claude", "codebuddy":
 		return filepath.Join(workDir, "CLAUDE.md")
 	case "codex", "copilot", "opencode", "openclaw", "hermes", "pi", "cursor", "kimi", "kiro", "antigravity":
 		return filepath.Join(workDir, "AGENTS.md")
@@ -711,8 +711,8 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("3. Follow the references that `SKILL.md` points to that are relevant to your change. For any code-writing or code-review task this ALWAYS includes the applicable coding-standards reference (comments/Javadoc, naming, etc.), not only the task-type-specific reference (e.g. unit-test).\n")
 		b.WriteString("4. Comply with every required rule the skill states — rules marked Mandatory, must/required language, Principles, and checklist items alike (skills label requirements differently; do not assume a `Mandatory:` tag). If one cannot be met, state which one and why in your result comment.\n\n")
 		switch provider {
-		case "claude":
-			// Claude discovers skills natively from .claude/skills/ — just list names.
+		case "claude", "codebuddy":
+			// Claude/CodeBuddy discovers skills natively from .claude/skills/ — just list names.
 			b.WriteString("You have the following skills installed (discovered automatically):\n\n")
 		case "codex", "copilot", "opencode", "openclaw", "pi", "cursor", "kimi", "kiro", "antigravity":
 			// Codex, Copilot, OpenCode, OpenClaw, Pi, Cursor, Kimi, Kiro, and
