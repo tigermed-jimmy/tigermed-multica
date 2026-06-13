@@ -97,7 +97,13 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
   // signature handles the not-found / loading case internally so the early
   // returns below don't violate the rules of hooks. Backend gates archive
   // and restore identically to edit, so a single `canEdit` covers them all.
-  const { canEdit } = useAgentPermissions(agent, wsId);
+  // While the member list is on its initial fetch the hook returns PENDING
+  // denies — `agentPermsLoading` lets us render "unknown" instead of a
+  // false hard denial (the env tab takes `null`, the banner stays hidden).
+  const { canEdit, isLoading: agentPermsLoading } = useAgentPermissions(
+    agent,
+    wsId,
+  );
 
   const [confirmArchive, setConfirmArchive] = useState(false);
 
@@ -254,7 +260,10 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
         onArchive={() => setConfirmArchive(true)}
       />
 
-      {!canEdit.allowed && (
+      {/* `agentPermsLoading` gate: the banner itself renders null on the
+          PENDING "unknown" reason, but its padded wrapper div would still
+          flash an empty spacer while permissions resolve. */}
+      {!agentPermsLoading && !canEdit.allowed && (
         <div className="px-6 pt-3">
           <CapabilityBanner
             reason={canEdit.reason}
@@ -301,6 +310,7 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
           agent={agent}
           runtimes={runtimes}
           onUpdate={handleUpdate}
+          canEdit={agentPermsLoading ? null : canEdit.allowed}
           navIntent={tabNavIntent}
           onNavIntentHandled={() => setTabNavIntent(null)}
         />

@@ -20,7 +20,7 @@ These commands read state and have no side effects:
 ```bash
 multica agent get <agent-id> --output json      # full persisted agent record
 multica agent skills list <agent-id> --output json   # current skill bindings
-multica agent env get <agent-id> --output json  # plaintext env (owner/admin only, agents denied)
+multica agent env get <agent-id> --output json  # plaintext env (agent owner or workspace owner/admin, agents denied)
 ```
 
 `agent get` returns the persisted agent including `runtime_id`, `model`,
@@ -122,13 +122,14 @@ Read-side facts (these are the wrong assumptions to avoid):
   list/get/create/update` and WS events return only `has_custom_env` (bool) and
   `custom_env_key_count` (int).
 - Reading plaintext values requires the dedicated `GET /api/agents/{id}/env`
-  endpoint (`multica agent env get`). It is gated to workspace **owner/admin**
-  members, and **agent actors are denied** regardless of the backing member's
-  role — a running agent cannot read another agent's secrets.
+  endpoint (`multica agent env get`). It is gated to the **agent owner** plus
+  workspace **owner/admin** members, and **agent actors are denied** regardless
+  of the backing member's role — a running agent cannot read another agent's
+  secrets.
 - Writing values after creation does NOT go through `agent update`. The generic
   update handler rejects any `custom_env` field with a 400 ("use PUT
   /api/agents/{id}/env"). Plaintext env writes are handled by
-  `PUT /api/agents/{id}/env` (`multica agent env set`), which is owner/admin-only
+  `PUT /api/agents/{id}/env` (`multica agent env set`), which is restricted to the agent owner or workspace owner/admin
   and writes an audit row.
 
 ### mcp_config
@@ -158,7 +159,12 @@ Two ways `mcp_config` differs from `custom_env`:
 - **It is serialized on read, but redacted.** `agent get`/`list` return
   `mcp_config` only to callers allowed to view agent secrets; otherwise the
   field is `null` and `mcp_config_redacted` is `true`. Agent actors never see
-  it, and a workspace may force redaction for everyone.
+  it. The workspace-level `always_redact_env` setting (legacy key name) forces
+  `mcp_config` redaction for everyone, including the agent owner and workspace
+  owner/admin — but it governs `mcp_config` exposure only. It does NOT restrict
+  the dedicated audited env endpoints (`GET`/`PUT /api/agents/{id}/env`), which
+  stay accessible to the agent owner and workspace owner/admin regardless of
+  the setting, with every reveal and edit recorded in the audit log.
 
 ## Skill binding
 
@@ -211,6 +217,10 @@ State-changing (require an explicit instruction — do not run speculatively):
   unknown provider-level literal is — model-specific gaps fail at run time.
 - "`set` and `add` are interchangeable for skills." `set` replaces all
   bindings; using it when you meant `add` silently removes capabilities.
+- "The workspace `always_redact_env` setting hides env values." It does not —
+  despite the legacy key name it only forces `mcp_config` redaction on agent
+  reads. Env values remain readable by the agent owner or workspace owner/admin
+  through the audited env endpoint regardless of the setting.
 
 ## References
 

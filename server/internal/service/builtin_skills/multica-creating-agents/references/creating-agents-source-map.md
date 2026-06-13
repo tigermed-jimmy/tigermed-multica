@@ -30,8 +30,8 @@ go test ./internal/service -run TestBuiltinSkillsConformToTemplate
 | `agent skills set` = replace-all | 772 | `PUT /api/agents/{id}/skills` (790); `--skill-ids ''` clears all (779) | `multica agent skills set --help` |
 | `agent skills add` = additive | 797 | `POST /api/agents/{id}/skills/add` (818); requires ≥1 id (804, 808) | `multica agent skills add --help` |
 | `agent skills list` | 740 | reads bindings, no side effect | `multica agent skills list --help` |
-| `agent env get` | 874 | `GET /api/agents/{id}/env` | `multica agent env get --help` |
-| `agent env set` | 909 | `PUT /api/agents/{id}/env` with full `custom_env` map (923, 929) | `multica agent env set --help` |
+| `agent env get` | 889 | `GET /api/agents/{id}/env` | `multica agent env get --help` |
+| `agent env set` | 924 | `PUT /api/agents/{id}/env` with full `custom_env` map (938, 944) | `multica agent env set --help` |
 
 Note: the CLI no longer exposes `--from-template`. The agent-template backend
 still exists (registry `server/internal/agenttmpl/`, handler `agent_template.go`,
@@ -61,6 +61,7 @@ only.
 | `max_concurrent_tasks` default | 638–639 | `if req.MaxConcurrentTasks == 0 { req.MaxConcurrentTasks = 6 }` — scheduler cap |
 | `mcp_config` null-skip on create | 704–705 | raw JSON copied through unless the body value is the literal `null` |
 | `mcp_config` redacted on read | 54, 848–851 | `redactMcpConfig` sets `McpConfigRedacted=true`; a private agent read by a member also redacts (494, 509) |
+| `always_redact_env` governs `mcp_config` only | 894–915 | `workspaceAlwaysRedactSecrets` reads the legacy `always_redact_env` key from workspace settings; consulted only by the `mcp_config` redaction call sites (508, 652). The env endpoints (`agent_env.go`) never call it — env reads/writes stay gated by `authorizeAgentEnv` plus audit logging, regardless of the setting |
 | `CreateAgent` insert params | 708–722 | persists runtime_config, instructions, custom_env, custom_args, model, thinking_level, mcp_config, visibility, max_concurrent_tasks |
 | `UpdateAgent` rejects `custom_env` | 910–913 | if `custom_env` present in body → 400 "use PUT /api/agents/{id}/env (or `multica agent env set`)" |
 | `UpdateAgent` persists / clears `mcp_config` | 944–948, 1060–1061 | Tri-state from the raw body: key omitted → no change; literal `null` → `ClearAgentMcpConfig`; object → replace. No 400 like `custom_env` — `mcp_config` IS updatable here |
@@ -70,16 +71,16 @@ only.
 
 | Contract | Line | Behavior |
 |---|---|---|
-| `authorizeAgentEnv` gate | 66 | loads agent, then applies the two checks below |
-| Agent actors denied | 80–84 | `if actorType == "agent"` → 403 "agents may not access env management endpoints" (MUL-2600 impersonation guard) |
-| Owner/admin only | 86 | `requireWorkspaceRole(..., "owner", "admin")` |
+| `authorizeAgentEnv` gate | 68 | loads agent, then applies the two checks below |
+| Agent actors denied | 83–85 | `if actorType == "agent"` → 403 "agents may not access env management endpoints" (MUL-2600 impersonation guard) |
+| Agent owner or workspace owner/admin | 88, 92–94 | `requireWorkspaceRole(..., "owner", "admin", "member")` then `canViewAgentSecrets` → 403 if neither condition met |
 
 ## Routes — `server/cmd/server/router.go`
 
 | Contract | Line | Behavior |
 |---|---|---|
-| `GET /env` | 603 | `h.GetAgentEnv` (plaintext read, gated) |
-| `PUT /env` | 604 | `h.UpdateAgentEnv` (full-map overwrite, gated) |
+| `GET /env` | 858 | `h.GetAgentEnv` (plaintext read, gated) |
+| `PUT /env` | 859 | `h.UpdateAgentEnv` (full-map overwrite, gated) |
 
 ## Claim-time injection — `server/internal/handler/daemon.go`
 

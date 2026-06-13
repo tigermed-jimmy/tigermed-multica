@@ -76,6 +76,14 @@ interface AgentOverviewPaneProps {
   runtimes: AgentRuntime[];
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>;
   /**
+   * `canEditAgent` decision from the detail page (agent owner or workspace
+   * owner/admin), or `null` while the member list is still loading and the
+   * permission is unknown. Currently consumed by the Environment tab to
+   * hide the audited Reveal flow from members who would get a 403 — and to
+   * show neutral copy (no Reveal button, no denial hint) while resolving.
+   */
+  canEdit: boolean | null;
+  /**
    * One-shot request from a sibling (the inspector's compact Lark status
    * row) to focus a specific tab. Routed through the same `requestTabChange`
    * the tab buttons use, so the unsaved-changes guard still fires. The pane
@@ -112,6 +120,7 @@ export function AgentOverviewPane({
   agent,
   runtimes,
   onUpdate,
+  canEdit,
   navIntent,
   onNavIntentHandled,
 }: AgentOverviewPaneProps) {
@@ -243,6 +252,7 @@ export function AgentOverviewPane({
           <TabContent>
             <EnvTab
               agent={agent}
+              canEdit={canEdit}
               onDirtyChange={setActiveDirty}
             />
           </TabContent>
