@@ -46,7 +46,7 @@ func TestRunAgentList_AddsTaskSquadScopeInAgentContext(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MULTICA_SERVER_URL", srv.URL)
 	t.Setenv("MULTICA_WORKSPACE_ID", "ws-1")
-	t.Setenv("MULTICA_TOKEN", "test-token")
+	t.Setenv("MULTICA_TOKEN", "mat_test-token")
 	t.Setenv("MULTICA_AGENT_ID", "agent-123")
 	t.Setenv("MULTICA_TASK_ID", "task-456")
 
@@ -67,7 +67,7 @@ func TestRunAgentList_OmitsTaskSquadScopeWithAllFlag(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MULTICA_SERVER_URL", srv.URL)
 	t.Setenv("MULTICA_WORKSPACE_ID", "ws-1")
-	t.Setenv("MULTICA_TOKEN", "test-token")
+	t.Setenv("MULTICA_TOKEN", "mat_test-token")
 	t.Setenv("MULTICA_AGENT_ID", "agent-123")
 	t.Setenv("MULTICA_TASK_ID", "task-456")
 
