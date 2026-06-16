@@ -155,7 +155,7 @@ export interface Agent {
    * Coarse metadata signalling whether the agent has any custom env
    * vars configured, without exposing the keys or values. Reads of
    * the real map go through the dedicated `GET /api/agents/{id}/env`
-   * endpoint (owner/admin only, audited). MUL-2600.
+   * endpoint (agent owner or workspace owner/admin only, audited). MUL-2600.
    *
    * Optional in the type so older backends (pre-MUL-2600) that omit
    * the field don't crash the renderer; downstream code should treat
@@ -326,8 +326,8 @@ export interface UpdateAgentRequest {
   /**
    * NOTE: `custom_env` is intentionally NOT updatable through this
    * request shape. Env edits flow through `client.updateAgentEnv` /
-   * `PUT /api/agents/{id}/env` — that path is owner/admin only,
-   * denies agent actors, and writes a persistent audit row. The
+   * `PUT /api/agents/{id}/env` — that path is agent owner or workspace
+   * owner/admin only, denies agent actors, and writes a persistent audit row. The
    * server REJECTS any `PUT /api/agents/{id}` body that includes
    * `custom_env` with a 400; do not put the field in this payload.
    * MUL-2600.
@@ -617,8 +617,17 @@ export type RuntimeLocalSkillStatus =
   | "pending"
   | "running"
   | "completed"
+  | "conflict"
   | "failed"
   | "timeout";
+
+export type RuntimeLocalSkillImportAction = "overwrite";
+
+export interface RuntimeLocalSkillImportConflict {
+  existing_skill_id: string;
+  existing_created_by?: string;
+  can_overwrite: boolean;
+}
 
 export interface RuntimeLocalSkillSummary {
   key: string;
@@ -644,6 +653,9 @@ export interface CreateRuntimeLocalSkillImportRequest {
   skill_key: string;
   name?: string;
   description?: string;
+  action?: RuntimeLocalSkillImportAction;
+  target_skill_id?: string;
+  supports_conflict?: boolean;
 }
 
 export interface RuntimeLocalSkillImportRequest {
@@ -652,8 +664,12 @@ export interface RuntimeLocalSkillImportRequest {
   skill_key: string;
   name?: string;
   description?: string;
+  action?: RuntimeLocalSkillImportAction;
+  target_skill_id?: string;
+  supports_conflict?: boolean;
   status: RuntimeLocalSkillStatus;
   skill?: Skill;
+  conflict?: RuntimeLocalSkillImportConflict;
   error?: string;
   created_at: string;
   updated_at: string;
@@ -665,5 +681,7 @@ export interface RuntimeLocalSkillsResult {
 }
 
 export interface RuntimeLocalSkillImportResult {
-  skill: Skill;
+  status: "created" | "updated" | "conflict";
+  skill?: Skill;
+  conflict?: RuntimeLocalSkillImportConflict;
 }

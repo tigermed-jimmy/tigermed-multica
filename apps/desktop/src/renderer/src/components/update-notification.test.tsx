@@ -42,6 +42,9 @@ beforeEach(() => {
     onNavigationGesture: vi.fn(() => vi.fn()),
     pickDirectory: vi.fn(() => Promise.resolve({ ok: false, reason: "cancelled" as const })),
     validateLocalDirectory: vi.fn(() => Promise.resolve({ ok: true })),
+    setRendererRouteContext: vi.fn(),
+    onCloseActiveTab: vi.fn(() => vi.fn()),
+    closeWindow: vi.fn(),
   };
 
   window.updater = {

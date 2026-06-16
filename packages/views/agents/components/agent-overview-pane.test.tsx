@@ -111,6 +111,7 @@ function renderPane(runtimes: AgentRuntime[]) {
           agent={baseAgent}
           runtimes={runtimes}
           onUpdate={vi.fn().mockResolvedValue(undefined)}
+          canEdit={true}
         />
       </QueryClientProvider>
     </I18nProvider>,
@@ -125,6 +126,7 @@ describe("AgentOverviewPane MCP tab visibility", () => {
   it.each([
     ["Claude", "claude"],
     ["Codex", "codex"],
+    ["Cursor", "cursor"],
     ["Hermes", "hermes"],
     ["Kimi", "kimi"],
     ["Kiro", "kiro"],

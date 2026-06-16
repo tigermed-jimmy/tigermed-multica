@@ -96,14 +96,14 @@ var agentEnvCmd = &cobra.Command{
 
 var agentEnvGetCmd = &cobra.Command{
 	Use:   "get <agent-id>",
-	Short: "Print an agent's custom_env as a JSON map (workspace owner/admin only; every call is recorded)",
+	Short: "Print an agent's custom_env as a JSON map (agent owner or workspace owner/admin; every call is recorded)",
 	Args:  exactArgs(1),
 	RunE:  runAgentEnvGet,
 }
 
 var agentEnvSetCmd = &cobra.Command{
 	Use:   "set <agent-id>",
-	Short: "Replace an agent's custom_env (workspace owner/admin only; values equal to **** preserve the existing entry)",
+	Short: "Replace an agent's custom_env (agent owner or workspace owner/admin; values equal to **** preserve the existing entry)",
 	Args:  exactArgs(1),
 	RunE:  runAgentEnvSet,
 }
@@ -190,7 +190,7 @@ func init() {
 	agentUpdateCmd.Flags().String("model", "", "New model identifier. Pass an empty string to clear and fall back to the runtime default.")
 	agentUpdateCmd.Flags().String("custom-args", "", "New custom CLI arguments as JSON array. For model selection prefer --model; some providers (codex app-server, openclaw) reject --model in custom_args.")
 	// custom_env is intentionally NOT part of `agent update`. Use
-	// `multica agent env set <id>` — that path is owner/admin-only,
+	// `multica agent env set <id>` — that path is restricted to the agent owner or workspace owner/admin,
 	// denies agent actors, and writes a persisted audit trail.
 	//
 	// mcp_config, unlike custom_env, IS updatable here: it is persisted
@@ -254,6 +254,9 @@ func newAPIClient(cmd *cobra.Command) (*cli.APIClient, error) {
 
 	if serverURL == "" {
 		return nil, fmt.Errorf("server URL not set: use --server-url flag, MULTICA_SERVER_URL env, or 'multica config set server_url <url>'")
+	}
+	if inAgentExecutionContext() && !strings.HasPrefix(token, "mat_") {
+		return nil, fmt.Errorf("agent execution context requires MULTICA_TOKEN to be a task-scoped mat_ token")
 	}
 
 	client := cli.NewAPIClient(serverURL, workspaceID, token)
@@ -345,7 +348,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var agents []map[string]any
@@ -399,7 +402,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var agent map[string]any
@@ -490,7 +493,7 @@ func runAgentCreate(cmd *cobra.Command, _ []string) error {
 		body["max_concurrent_tasks"] = v
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result map[string]any
@@ -572,7 +575,7 @@ func runAgentUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no fields to update; use --name, --description, --instructions, --runtime-id, --runtime-config, --model, --custom-args, --mcp-config, --visibility, --status, or --max-concurrent-tasks (env vars now live behind `multica agent env set <id>`)")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result map[string]any
@@ -595,7 +598,7 @@ func runAgentArchive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result map[string]any
@@ -618,7 +621,7 @@ func runAgentRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result map[string]any
@@ -641,7 +644,7 @@ func runAgentTasks(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var tasks []map[string]any
@@ -709,7 +712,7 @@ func runAgentAvatar(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("file too large: %d bytes (max 5MB)", len(fileData))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cli.AtLeastAPITimeout(60*time.Second))
 	defer cancel()
 
 	// Agent existence pre-check.
@@ -758,7 +761,7 @@ func runAgentSkillsList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var skills []map[string]any
@@ -798,7 +801,7 @@ func runAgentSkillsSet(cmd *cobra.Command, args []string) error {
 		"skill_ids": cleanIDs,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result json.RawMessage
@@ -826,7 +829,7 @@ func runAgentSkillsAdd(cmd *cobra.Command, args []string) error {
 		"skill_ids": cleanIDs,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result json.RawMessage
@@ -892,7 +895,7 @@ func runAgentEnvGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var resp map[string]any
@@ -937,7 +940,7 @@ func runAgentEnvSet(cmd *cobra.Command, args []string) error {
 
 	body := map[string]any{"custom_env": ce}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
 	var result map[string]any

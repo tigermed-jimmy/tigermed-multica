@@ -803,6 +803,10 @@ const TranscriptEventRow = ({
       : null;
   const toolUseHasInlineDiff =
     item.type === "tool_use" && parsedToolUseDiff != null;
+  const date = useMemo(
+    () => (item.created_at ? new Date(item.created_at) : null),
+    [item.created_at],
+  );
 
   const hasDetail =
     (item.type === "tool_use" && (
@@ -862,6 +866,17 @@ const TranscriptEventRow = ({
           <span className="shrink-0 text-[10px] text-muted-foreground/50 tabular-nums mt-1">
             #{item.seq}
           </span>
+
+          {/* Timestamp */}
+          {date && (
+            <span className="shrink-0 text-[10px] text-muted-foreground/50 tabular-nums mt-1" title={date.toLocaleString()}>
+              {date.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
+          )}
         </div>
 
         {/* Expanded detail */}
